@@ -1,57 +1,112 @@
-<main class="main-content">
-  <section id="view-home" class="view active">
-    <div class="hero-card status-card">
-      <div class="hero-top"><span class="status-dot" id="statusDot"></span> <span id="statusLabel">분석 중</span></div>
-      <div class="hero-number" id="metabolicScore">--</div>
-      <div id="metabolicSummary" class="hero-sub">데이터를 입력하면 점수가 계산됩니다.</div>
-    </div>
-    <div class="card mission-card">
-      <div class="section-title-row"><h3>오늘의 리셋 미션</h3><span class="pill" id="phasePill">Phase 1</span></div>
-      <strong id="todayMissionTitle">--</strong>
-      <p id="todayMissionText">--</p>
-      <div class="mission-actions">
-        <button id="missionCompleteBtn" class="primary-btn">완료</button>
-        <button id="missionSkipBtn" class="secondary-btn">다음</button>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Metabolic Reset</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div>
+        <div class="eyebrow">METABOLIC HUB</div>
+        <h1>Metabolic Reset</h1>
       </div>
-    </div>
-  </section>
+      <button id="todayMissionBtn" class="primary-btn ghostish">미션</button>
+    </header>
 
-  <section id="view-log" class="view">
-    <div class="page-header card compact"><h2>오늘의 기록</h2></div>
-    <div class="card">
-      <h3>혈당 기록</h3>
-      <form id="glucoseForm" class="form-grid">
-        <input type="number" name="value" placeholder="혈당(mg/dL)" required />
-        <select name="type"><option value="fasting">공복</option><option value="post1">식후 1h</option><option value="post2">식후 2h</option></select>
-        <button type="submit" class="primary-btn">저장</button>
-      </form>
-    </div>
-    </section>
+    <main class="main-content">
+      <section id="view-home" class="view active">
+        <article class="hero-card">
+          <div class="hero-top"><span class="status-dot" id="statusDot"></span> <span id="statusLabel">분석 중</span></div>
+          <div class="hero-number" id="metabolicScore">--</div>
+          <div class="hero-sub" id="metabolicSummary">기록을 시작해 보세요!</div>
+          <div class="range-bar"><div class="range-fill" id="rangeFill"></div></div>
+        </article>
 
-  <section id="view-stats" class="view">
-    <div class="card">
-      <div class="section-title-row"><h3>혈당 도로망</h3></div>
-      <div class="chart-card"><svg id="glucoseChart" viewBox="0 0 360 220"></svg></div>
-    </div>
-    <div class="card"><h3>위험 음식 랭킹</h3><div id="riskFoodList" class="list-stack"></div></div>
-  </section>
+        <article class="card">
+          <div class="section-title-row"><h2>오늘의 리셋 미션</h2><span class="pill" id="phasePill">Phase 1</span></div>
+          <strong id="todayMissionTitle">--</strong>
+          <p id="todayMissionText">--</p>
+          <div class="mission-actions">
+            <button id="missionCompleteBtn" class="primary-btn">완료</button>
+            <button id="missionSkipBtn" class="secondary-btn">다음</button>
+          </div>
+        </article>
+      </section>
 
-  <section id="view-roadmap" class="view">
-    <div class="card">
-      <div class="section-title-row"><h3>12주 로드맵</h3><span class="pill" id="roadmapWeekPill">1주차</span></div>
-      <input id="weekRange" type="range" min="1" max="12" />
-      <div id="roadmapSummary" class="insight-card"></div>
-    </div>
-    <div class="card">
-      <h3>정밀 진단 (HOMA-R)</h3>
-      <div id="diagInsight" class="insight-card">최신 진단 데이터가 없습니다.</div>
-    </div>
-  </section>
-</main>
+      <section id="view-log" class="view">
+        <div class="card">
+          <h3>기록 통합 입력</h3>
+          <div class="segmented-mini">
+            <button class="log-tab active" onclick="showLogForm('glucose')">혈당</button>
+            <button class="log-tab" onclick="showLogForm('diet')">식단</button>
+            <button class="log-tab" onclick="showLogForm('exercise')">운동</button>
+            <button class="log-tab" onclick="showLogForm('hormone')">생활</button>
+          </div>
+          
+          <form id="glucoseForm" class="log-form active form-grid">
+            <input type="date" name="date" required />
+            <input type="time" name="time" required />
+            <select name="type"><option value="fasting">공복</option><option value="post1">식후 1h</option><option value="post2">식후 2h</option></select>
+            <input type="number" name="value" placeholder="혈당(mg/dL)" required />
+            <input type="text" name="food" class="full" placeholder="음식명" />
+            <button type="submit" class="primary-btn full">혈당 저장</button>
+          </form>
 
-<nav class="bottom-nav">
-  <button class="nav-btn active" data-nav="home">홈</button>
-  <button class="nav-btn" data-nav="log">기록</button>
-  <button class="nav-btn" data-nav="stats">분석</button>
-  <button class="nav-btn" data-nav="roadmap">로드맵</button>
-</nav>
+          <form id="dietForm" class="log-form form-grid" style="display:none;">
+            <input type="date" name="date" required />
+            <select name="mealType"><option>아침</option><option>점심</option><option>저녁</option></select>
+            <label class="checkbox-row full"><input type="checkbox" name="reverseMeal" /> 거꾸로 식사</label>
+            <label class="checkbox-row full"><input type="checkbox" name="chopsticksOnly" /> 젓가락 식사</label>
+            <input type="text" name="giSwap" class="full" placeholder="GI 대안 (예: 백미→현미)" />
+            <button type="submit" class="primary-btn full">식단 저장</button>
+          </form>
+
+          </div>
+        
+        <div class="card">
+          <h3>최근 활동</h3>
+          <div id="combinedList" class="list-stack"></div>
+        </div>
+      </section>
+
+      <section id="view-stats" class="view">
+        <div class="card">
+          <div class="section-title-row"><h3>혈당 도로망</h3></div>
+          <div class="chart-card"><svg id="glucoseChart" viewBox="0 0 360 220"></svg></div>
+          <p id="glucoseSummaryText" class="summary-inline"></p>
+        </div>
+        <div class="card"><h3>위험 음식 랭킹</h3><div id="riskFoodList" class="list-stack"></div></div>
+      </section>
+
+      <section id="view-roadmap" class="view">
+        <div class="card">
+          <h3>12주 리셋 로드맵</h3>
+          <input id="weekRange" type="range" min="1" max="12" />
+          <div id="roadmapSummary" class="insight-card"></div>
+        </div>
+        <div class="card">
+          <h3>정밀 진단 (HOMA-R)</h3>
+          <form id="diagnosisForm" class="form-grid">
+            <input type="number" name="fasting" placeholder="공복혈당" required />
+            <input type="number" name="insulin" placeholder="인슐린" step="0.1" required />
+            <input type="number" name="a1c" placeholder="당화혈색소" step="0.1" required />
+            <button type="submit" class="primary-btn full">계산 및 저장</button>
+          </form>
+          <div id="diagInsight" class="insight-card"></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-nav="home">홈</button>
+      <button class="nav-btn" data-nav="log">기록</button>
+      <button class="nav-btn" data-nav="stats">분석</button>
+      <button class="nav-btn" data-nav="roadmap">진척</button>
+    </nav>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
