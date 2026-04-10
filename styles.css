@@ -1,76 +1,21 @@
-/* 기존 :root에 부드러운 컬러 팔레트 추가 및 그림자 정교화 */
-:root {
-  --bg: #0b0f1a;
-  --panel: rgba(30, 41, 59, 0.7);
-  --panel-border: rgba(255, 255, 255, 0.1);
-  --text: #f8fafc;
-  --muted: #94a3b8;
-  --accent: #10b981; /* 더 선명한 에메랄드 */
-  --accent-glow: rgba(16, 185, 129, 0.3);
-  --radius-lg: 28px;
-  --radius-md: 18px;
-  --shadow-premium: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+.segmented-mini {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  background: rgba(255,255,255,0.05);
+  padding: 4px;
+  border-radius: 12px;
 }
-
-body {
-  background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b0f1a 100%);
-  line-height: 1.6;
-}
-
-/* 카드 디자인: 배경 블러 효과 추가 */
-.card, .hero-card, .menu-card {
-  background: var(--panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--panel-border);
-  box-shadow: var(--shadow-premium);
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-
-.menu-card:active {
-  transform: scale(0.98);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-/* 히어로 스코어 영역 강조 */
-.hero-number {
-  font-size: 64px;
-  background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -2px;
-}
-
-/* 스포티하고 현대적인 내비게이션 바 */
-.bottom-nav {
-  bottom: 24px;
+.log-tab {
+  flex: 1;
   padding: 8px;
-  background: rgba(15, 23, 42, 0.85);
-  border-radius: 32px;
-  width: calc(100% - 32px);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 8px;
 }
-
-.nav-btn {
-  font-size: 11px;
-  font-weight: 500;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.nav-btn.active {
+.log-tab.active {
   background: var(--accent);
-  color: #fff;
-  box-shadow: 0 4px 12px var(--accent-glow);
-}
-
-/* 입력 필드 세련되게 */
-input, select {
-  border: 1.5px solid transparent;
-  background: rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
-}
-
-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.08);
+  color: white;
 }
