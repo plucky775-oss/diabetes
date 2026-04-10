@@ -3,482 +3,386 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>당뇨관리</title>
-  <meta name="theme-color" content="#3f6f92" />
-  <meta name="description" content="공복혈당, 식후혈당, 식사, 운동, 검사결과를 함께 관리하는 당뇨전단계 관리 앱" />
+  <title>Metabolic Reset</title>
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="description" content="인슐린 저항성 개선과 대사 유연성 회복을 위한 정밀 당뇨 관리 앱" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="app-header">
-      <div class="header-left">
-        <button class="square-btn" id="homeButton" aria-label="홈으로">⌂</button>
+      <div>
+        <div class="eyebrow">METABOLIC HUB</div>
+        <h1>Metabolic Reset</h1>
+        <p>단순 기록을 넘어선 대사 유연성 회복 솔루션</p>
       </div>
-      <div class="header-title-wrap">
-        <div class="app-badge">🩺</div>
-        <div>
-          <h1>당뇨관리</h1>
-          <p>혈당 · 식사 · 운동 · 검사결과 통합관리</p>
-        </div>
-      </div>
+      <button id="todayMissionBtn" class="primary-btn ghostish">오늘 미션</button>
     </header>
 
     <main class="main-content">
       <section id="view-home" class="view active">
-        <div class="hero-card">
-          <div class="hero-left">
-            <div class="hero-emoji" id="statusEmoji">🟢</div>
-            <div class="hero-status">
-              <strong id="heroStatusText">안정적</strong>
-              <span id="heroStatusSub">최근 공복혈당 평균</span>
-              <div class="hero-avg"><span id="heroAvgValue">92</span><small>mg/dL</small></div>
+        <div class="hero-grid">
+          <article class="hero-card status-card">
+            <div class="hero-top">
+              <span class="status-dot" id="statusDot"></span>
+              <span id="statusLabel">대사 유연성 구역</span>
+            </div>
+            <div class="hero-number" id="metabolicScore">82</div>
+            <div class="hero-sub" id="metabolicSummary">최근 기록 기준 안정적인 흐름입니다.</div>
+            <div class="range-bar">
+              <div class="range-fill" id="rangeFill"></div>
+            </div>
+            <div class="range-labels">
+              <span>Spike</span>
+              <span>Reset</span>
+            </div>
+          </article>
+
+          <article class="hero-card mission-card">
+            <div class="section-title-row">
+              <h2>오늘의 리셋 미션</h2>
+              <span class="pill" id="phasePill">Phase 1</span>
+            </div>
+            <strong id="todayMissionTitle">식후 15분 걷기</strong>
+            <p id="todayMissionText">식사 종료 후 30분 안에 15분 걷기를 완료해 보세요.</p>
+            <div class="mission-actions">
+              <button id="missionCompleteBtn" class="primary-btn">완료 체크</button>
+              <button id="missionSkipBtn" class="secondary-btn">다음 보기</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="card">
+          <div class="section-title-row">
+            <h2>실시간 대사 맵</h2>
+            <span class="pill" id="roadmapPill">개인 반응 분석</span>
+          </div>
+          <div class="map-grid">
+            <div class="map-chart-wrap">
+              <svg id="roadmapChart" viewBox="0 0 360 180" aria-label="혈당 맵"></svg>
+            </div>
+            <div class="mini-metrics">
+              <article class="metric-box">
+                <span>오늘 공복혈당</span>
+                <strong id="homeFasting">-</strong>
+              </article>
+              <article class="metric-box">
+                <span>최신 HOMA-R</span>
+                <strong id="homeHoma">-</strong>
+              </article>
+              <article class="metric-box">
+                <span>위험 음식</span>
+                <strong id="homeRiskFood">-</strong>
+              </article>
+              <article class="metric-box">
+                <span>연속 운동 공백</span>
+                <strong id="homeExerciseGap">0일</strong>
+              </article>
             </div>
           </div>
-          <div class="hero-time">
-            <div id="currentTime">09:53</div>
-            <div id="currentDate">4월 10일 (금)</div>
-          </div>
         </div>
 
-        <div class="today-summary card">
-          <div class="section-title-row">
-            <h2>오늘 요약</h2>
-            <span class="pill" id="dailyScorePill">실천점수 0점</span>
-          </div>
-          <div class="metric-grid">
-            <article class="metric-box">
-              <span>공복혈당</span>
-              <strong id="metricFasting">-</strong>
-            </article>
-            <article class="metric-box">
-              <span>식후 1시간</span>
-              <strong id="metricPost1">-</strong>
-            </article>
-            <article class="metric-box">
-              <span>식후 2시간</span>
-              <strong id="metricPost2">-</strong>
-            </article>
-            <article class="metric-box">
-              <span>최신 당화혈색소</span>
-              <strong id="metricA1c">-</strong>
-            </article>
-          </div>
-        </div>
-
-        <div class="menu-stack">
-          <button class="menu-card" data-nav="glucose">
-            <div class="menu-icon blue">🩸</div>
+        <div class="dashboard-grid">
+          <button class="menu-card" data-nav="diagnosis">
+            <div class="menu-icon red">🧪</div>
             <div class="menu-text">
-              <strong>혈당 기록</strong>
-              <span>공복혈당 · 식후 1시간 · 식후 2시간 · 주간/월간/연간 그래프</span>
+              <strong>정밀 진단</strong>
+              <span>HOMA-R 계산 · 당뇨전단계 분류 · 대사 위험도</span>
             </div>
             <div class="menu-arrow">›</div>
           </button>
 
-          <button class="menu-card" data-nav="meal">
+          <button class="menu-card" data-nav="glucose">
+            <div class="menu-icon blue">🩸</div>
+            <div class="menu-text">
+              <strong>혈당 도로망</strong>
+              <span>공복/식후 기록 · CGM형 흐름 그래프 · 스파이크 구간</span>
+            </div>
+            <div class="menu-arrow">›</div>
+          </button>
+
+          <button class="menu-card" data-nav="diet">
             <div class="menu-icon green">🥗</div>
             <div class="menu-text">
-              <strong>식사 관리</strong>
-              <span>거꾸로 식사법 · 식이섬유 · 당음료 체크 · 식사 메모</span>
+              <strong>전략 식단</strong>
+              <span>거꾸로 식사 타이머 · 젓가락 챌린지 · GI 대안</span>
             </div>
             <div class="menu-arrow">›</div>
           </button>
 
           <button class="menu-card" data-nav="exercise">
-            <div class="menu-icon orange">🚶</div>
+            <div class="menu-icon orange">🏃</div>
             <div class="menu-text">
-              <strong>운동 관리</strong>
-              <span>식후 걷기 · 유산소 · 근력운동 · 주간 운동시간 누적</span>
+              <strong>Bio-Hack 운동</strong>
+              <span>GLUT4 트래커 · 식후 15분 골든타임 · 48시간 법칙</span>
             </div>
             <div class="menu-arrow">›</div>
           </button>
 
-          <button class="menu-card" data-nav="labs">
-            <div class="menu-icon violet">🧪</div>
+          <button class="menu-card" data-nav="hormone">
+            <div class="menu-icon violet">🧠</div>
             <div class="menu-text">
-              <strong>혈액검사</strong>
-              <span>HbA1c · 인슐린 · 체중 · 허리둘레 · 검사 이력</span>
+              <strong>호르몬 관리</strong>
+              <span>수면 · 스트레스 · 명상 · 코르티솔 관리</span>
             </div>
             <div class="menu-arrow">›</div>
           </button>
 
-          <button class="menu-card" data-nav="lifestyle">
-            <div class="menu-icon teal">🌙</div>
+          <button class="menu-card" data-nav="roadmap">
+            <div class="menu-icon teal">🛣️</div>
             <div class="menu-text">
-              <strong>생활습관</strong>
-              <span>수면 · 스트레스 · 수분 · 명상 · 영양제 루틴 체크</span>
-            </div>
-            <div class="menu-arrow">›</div>
-          </button>
-
-          <button class="menu-card" data-nav="report">
-            <div class="menu-icon red">📈</div>
-            <div class="menu-text">
-              <strong>리포트</strong>
-              <span>혈당 추세 · 주간 평균 · 실천률 · 스파이크 요약</span>
+              <strong>12주 로드맵</strong>
+              <span>Phase별 목표 · 체중 감량 · 대사 리셋 진행률</span>
             </div>
             <div class="menu-arrow">›</div>
           </button>
         </div>
       </section>
 
+      <section id="view-diagnosis" class="view">
+        <div class="page-header card compact">
+          <h2>정밀 진단 모듈</h2>
+          <p>공복혈당, 인슐린, HbA1c를 기반으로 인슐린 저항성과 위험도를 바로 확인합니다.</p>
+        </div>
+
+        <div class="card">
+          <h3>진단 입력</h3>
+          <form id="diagnosisForm" class="form-grid">
+            <label>측정일<input type="date" name="date" required /></label>
+            <label>공복혈당 (mg/dL)<input type="number" name="fasting" min="40" max="400" required /></label>
+            <label>공복 인슐린 (μIU/mL)<input type="number" name="insulin" min="0" max="100" step="0.01" required /></label>
+            <label>HbA1c (%)<input type="number" name="a1c" min="3" max="15" step="0.1" required /></label>
+            <label>체중 (kg)<input type="number" name="weight" min="20" max="300" step="0.1" /></label>
+            <label>허리둘레 (cm)<input type="number" name="waist" min="30" max="200" step="0.1" /></label>
+            <label class="full">메모<input type="text" name="note" placeholder="예: 건강검진 결과 입력" /></label>
+            <button type="submit" class="primary-btn full">진단 저장 및 계산</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-title-row">
+            <h3>최신 분석</h3>
+            <span class="pill" id="diagnosisDatePill">-</span>
+          </div>
+          <div class="metric-grid three-col">
+            <article class="metric-box"><span>HOMA-R</span><strong id="diagHoma">-</strong></article>
+            <article class="metric-box"><span>당뇨전단계 위험</span><strong id="diagPrediabetes">-</strong></article>
+            <article class="metric-box"><span>대사 상태</span><strong id="diagState">-</strong></article>
+          </div>
+          <div id="diagInsight" class="insight-card">입력 후 자동 해석이 표시됩니다.</div>
+          <div id="diagnosisList" class="list-stack"></div>
+        </div>
+      </section>
+
       <section id="view-glucose" class="view">
         <div class="page-header card compact">
-          <h2>혈당 기록</h2>
-          <p>공복혈당과 식후혈당을 한 곳에서 기록하고 그래프로 확인합니다.</p>
+          <h2>Glycemic Roadmap</h2>
+          <p>개인별 혈당 반응을 시각화해 위험 음식과 안정 구간을 찾습니다.</p>
         </div>
 
         <div class="card">
           <div class="section-title-row wrap">
-            <h3>그래프</h3>
+            <h3>혈당 흐름 그래프</h3>
             <div class="segmented">
-              <button class="seg-btn active" data-range="7">주간</button>
-              <button class="seg-btn" data-range="30">월간</button>
-              <button class="seg-btn" data-range="365">연간</button>
+              <button class="seg-btn active" data-range="7">7일</button>
+              <button class="seg-btn" data-range="14">14일</button>
+              <button class="seg-btn" data-range="30">30일</button>
             </div>
           </div>
-
           <div class="segmented type-tabs">
-            <button class="type-btn active" data-type="fasting">공복혈당</button>
+            <button class="type-btn active" data-type="fasting">공복</button>
             <button class="type-btn" data-type="post1">식후 1시간</button>
             <button class="type-btn" data-type="post2">식후 2시간</button>
           </div>
-
           <div class="chart-card">
-            <svg id="glucoseChart" viewBox="0 0 340 220" role="img" aria-label="혈당 추세 그래프"></svg>
+            <svg id="glucoseChart" viewBox="0 0 360 220" aria-label="혈당 추세"></svg>
           </div>
-          <div class="chart-legend">
-            <span><i class="legend-line target"></i> 기준선</span>
-            <span><i class="legend-line actual"></i> 기록값</span>
-          </div>
-          <div class="summary-inline" id="glucoseSummaryText">최근 7일 평균을 계산합니다.</div>
+          <div id="glucoseSummaryText" class="summary-inline">최근 흐름을 계산 중입니다.</div>
         </div>
 
         <div class="card">
-          <h3>혈당 입력</h3>
+          <h3>혈당 반응 입력</h3>
           <form id="glucoseForm" class="form-grid">
-            <label>
-              날짜
-              <input type="date" name="date" required />
-            </label>
-            <label>
-              시간
-              <input type="time" name="time" required />
-            </label>
-            <label>
-              구분
+            <label>날짜<input type="date" name="date" required /></label>
+            <label>시간<input type="time" name="time" required /></label>
+            <label>구분
               <select name="type">
-                <option value="fasting">공복혈당</option>
+                <option value="fasting">공복</option>
                 <option value="post1">식후 1시간</option>
                 <option value="post2">식후 2시간</option>
               </select>
             </label>
-            <label>
-              혈당(mg/dL)
-              <input type="number" name="value" min="40" max="400" required />
-            </label>
-            <label class="full">
-              메모
-              <input type="text" name="note" placeholder="예: 점심 후 산책 20분" />
-            </label>
+            <label>혈당 (mg/dL)<input type="number" name="value" min="40" max="400" required /></label>
+            <label class="full">관련 음식<input type="text" name="food" placeholder="예: 현미밥, 냉면, 떡볶이" /></label>
+            <label class="full">메모<input type="text" name="note" placeholder="예: 식후 20분 걷기, 수면 부족" /></label>
             <button type="submit" class="primary-btn full">혈당 저장</button>
           </form>
         </div>
 
         <div class="card">
           <div class="section-title-row">
-            <h3>최근 기록</h3>
-            <button class="ghost-btn" id="clearGlucoseBtn">전체 삭제</button>
+            <h3>위험 음식 랭킹</h3>
+            <span class="pill">개인화</span>
           </div>
-          <div id="glucoseList" class="list-stack"></div>
+          <div id="riskFoodList" class="list-stack"></div>
         </div>
       </section>
 
-      <section id="view-meal" class="view">
+      <section id="view-diet" class="view">
         <div class="page-header card compact">
-          <h2>식사 관리</h2>
-          <p>거꾸로 식사법과 식이섬유 섭취를 쉽게 체크합니다.</p>
+          <h2>전략 식단 가이드</h2>
+          <p>거꾸로 식사법, 젓가락 식사, GI 대안 추천으로 스파이크를 줄입니다.</p>
+        </div>
+
+        <div class="dual-grid">
+          <div class="card">
+            <div class="section-title-row"><h3>거꾸로 식사 타이머</h3><span class="pill" id="timerStage">준비</span></div>
+            <div class="timer-display" id="timerDisplay">05:00</div>
+            <div class="timer-guide" id="timerGuide">채소 5분부터 시작하세요.</div>
+            <div class="timer-actions">
+              <button id="timerStartBtn" class="primary-btn">시작</button>
+              <button id="timerNextBtn" class="secondary-btn">다음 단계</button>
+              <button id="timerResetBtn" class="ghost-btn">리셋</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>식사 체크</h3>
+            <form id="dietForm" class="form-grid">
+              <label>날짜<input type="date" name="date" required /></label>
+              <label>식사 구분
+                <select name="mealType"><option>아침</option><option>점심</option><option>저녁</option><option>간식</option></select>
+              </label>
+              <label class="checkbox-row full"><input type="checkbox" name="reverseMeal" /> 거꾸로 식사법을 지켰어요</label>
+              <label class="checkbox-row full"><input type="checkbox" name="chopsticksOnly" /> 젓가락 위주로 먹었어요</label>
+              <label>탄수화물 음식<input type="text" name="carbFood" placeholder="예: 백미, 현미, 통밀빵" /></label>
+              <label>GI 대안 적용<input type="text" name="giSwap" placeholder="예: 백미 → 현미" /></label>
+              <label class="full">메모<input type="text" name="note" placeholder="예: 액상과당 음료 없이 식사 완료" /></label>
+              <button type="submit" class="primary-btn full">식사 저장</button>
+            </form>
+          </div>
         </div>
 
         <div class="card">
-          <h3>식사 입력</h3>
-          <form id="mealForm" class="form-grid">
-            <label>
-              날짜
-              <input type="date" name="date" required />
-            </label>
-            <label>
-              식사 구분
-              <select name="mealType">
-                <option>아침</option>
-                <option>점심</option>
-                <option>저녁</option>
-                <option>간식</option>
-              </select>
-            </label>
-            <label class="checkbox-row full">
-              <input type="checkbox" name="veggieFirst" />
-              채소를 먼저 먹었어요
-            </label>
-            <label class="checkbox-row full">
-              <input type="checkbox" name="proteinNext" />
-              단백질을 먼저 충분히 먹었어요
-            </label>
-            <label class="checkbox-row full">
-              <input type="checkbox" name="carbLast" />
-              탄수화물은 마지막에 먹었어요
-            </label>
-            <label>
-              식이섬유(g)
-              <input type="number" name="fiber" min="0" max="100" value="0" />
-            </label>
-            <label>
-              당음료
-              <select name="sugaryDrink">
-                <option value="no">마시지 않음</option>
-                <option value="yes">마심</option>
-              </select>
-            </label>
-            <label class="full">
-              음식 메모
-              <input type="text" name="note" placeholder="예: 채소→고기→밥 순서로 식사" />
-            </label>
-            <button type="submit" class="primary-btn full">식사 저장</button>
-          </form>
+          <div class="section-title-row"><h3>GI 대안 추천</h3><span class="pill">빠른 선택</span></div>
+          <div id="giSwapList" class="chip-grid"></div>
         </div>
 
         <div class="card">
-          <div class="section-title-row">
-            <h3>오늘 식사 점검</h3>
-            <span class="pill" id="mealScorePill">0점</span>
-          </div>
-          <div class="tip-box">
-            <strong>추천 기준</strong>
-            <p>채소 → 단백질 → 탄수화물 순서와 식이섬유 섭취는 식후 혈당 스파이크를 낮추는 데 도움이 됩니다.</p>
-          </div>
-          <div id="mealList" class="list-stack"></div>
+          <div class="section-title-row"><h3>최근 식사 기록</h3><span class="pill" id="dietScorePill">0점</span></div>
+          <div id="dietList" class="list-stack"></div>
         </div>
       </section>
 
       <section id="view-exercise" class="view">
         <div class="page-header card compact">
-          <h2>운동 관리</h2>
-          <p>식후 걷기와 주간 운동량을 함께 관리합니다.</p>
+          <h2>Bio-Hack Exercise</h2>
+          <p>식후 골든타임, GLUT4 활성화 운동, 48시간 법칙을 중심으로 설계했습니다.</p>
+        </div>
+
+        <div class="card">
+          <div class="metric-grid three-col">
+            <article class="metric-box"><span>주간 유산소</span><strong id="exerciseAerobic">0분</strong></article>
+            <article class="metric-box"><span>하체 근력</span><strong id="exerciseStrength">0회</strong></article>
+            <article class="metric-box"><span>운동 공백</span><strong id="exerciseGap">0일</strong></article>
+          </div>
         </div>
 
         <div class="card">
           <h3>운동 입력</h3>
           <form id="exerciseForm" class="form-grid">
-            <label>
-              날짜
-              <input type="date" name="date" required />
-            </label>
-            <label>
-              운동 종류
+            <label>날짜<input type="date" name="date" required /></label>
+            <label>운동 종류
               <select name="kind">
-                <option value="walking">걷기</option>
+                <option value="walking">식후 걷기</option>
+                <option value="squat">스쿼트</option>
+                <option value="lunge">런지</option>
                 <option value="cardio">유산소</option>
-                <option value="strength">근력운동</option>
-                <option value="stretch">스트레칭</option>
               </select>
             </label>
-            <label>
-              운동시간(분)
-              <input type="number" name="minutes" min="0" max="300" required />
+            <label>시간 (분)<input type="number" name="minutes" min="0" max="300" required /></label>
+            <label>강도
+              <select name="intensity"><option>가벼움</option><option>중강도</option><option>강함</option></select>
             </label>
-            <label>
-              강도
-              <select name="intensity">
-                <option>가벼움</option>
-                <option>중강도</option>
-                <option>강함</option>
-              </select>
-            </label>
-            <label class="checkbox-row full">
-              <input type="checkbox" name="afterMeal" />
-              식후 30분~1시간 사이 운동했어요
-            </label>
-            <label class="full">
-              메모
-              <input type="text" name="note" placeholder="예: 점심 후 25분 걷기" />
-            </label>
+            <label class="checkbox-row full"><input type="checkbox" name="goldenTime" /> 식사 후 30분 안에 시작했어요</label>
+            <label class="full">메모<input type="text" name="note" placeholder="예: 저녁 후 18분 걷기" /></label>
             <button type="submit" class="primary-btn full">운동 저장</button>
           </form>
         </div>
 
-        <div class="card">
-          <div class="section-title-row">
-            <h3>주간 운동 요약</h3>
-            <span class="pill" id="exerciseSummaryPill">0분</span>
+        <div class="dual-grid">
+          <div class="card">
+            <div class="section-title-row"><h3>식후 15분 골든타임</h3><span class="pill" id="goldenAlarmStatus">대기</span></div>
+            <label class="inline-field">식사 종료 시간 <input type="time" id="mealEndTime" /></label>
+            <button id="goldenAlarmBtn" class="primary-btn">30분 후 걷기 알림 계산</button>
+            <div id="goldenAlarmText" class="summary-inline">식사 종료 시간을 입력하면 추천 시작 시간이 계산됩니다.</div>
           </div>
-          <div class="metric-grid two-col">
-            <article class="metric-box">
-              <span>유산소 누적</span>
-              <strong id="weeklyAerobic">0분</strong>
-            </article>
-            <article class="metric-box">
-              <span>근력 횟수</span>
-              <strong id="weeklyStrength">0회</strong>
-            </article>
+          <div class="card">
+            <div class="section-title-row"><h3>48시간 법칙</h3><span class="pill warn" id="gapPill">정상</span></div>
+            <div id="gapMessage" class="insight-card">연속 2일 이상 운동 공백이 생기지 않도록 유지하세요.</div>
           </div>
-          <div class="tip-box">
-            <strong>추천 기준</strong>
-            <p>주 150분 이상 중강도 유산소, 주 2~3회 근력운동, 식후 걷기가 도움됩니다.</p>
-          </div>
-          <div id="exerciseList" class="list-stack"></div>
         </div>
+
+        <div class="card"><div id="exerciseList" class="list-stack"></div></div>
       </section>
 
-      <section id="view-labs" class="view">
+      <section id="view-hormone" class="view">
         <div class="page-header card compact">
-          <h2>혈액검사</h2>
-          <p>당화혈색소와 체성분 지표를 기록합니다.</p>
+          <h2>수면 · 스트레스 · 호르몬 관리</h2>
+          <p>코르티솔 과부하를 줄여 혈당 변동성과 인슐린 저항성 악화를 막는 영역입니다.</p>
         </div>
 
         <div class="card">
-          <h3>검사결과 입력</h3>
-          <form id="labForm" class="form-grid">
-            <label>
-              검사일
-              <input type="date" name="date" required />
-            </label>
-            <label>
-              HbA1c(%)
-              <input type="number" name="a1c" min="3" max="15" step="0.1" required />
-            </label>
-            <label>
-              공복혈당(mg/dL)
-              <input type="number" name="fasting" min="40" max="400" />
-            </label>
-            <label>
-              인슐린(μIU/mL)
-              <input type="number" name="insulin" min="0" max="100" step="0.01" />
-            </label>
-            <label>
-              체중(kg)
-              <input type="number" name="weight" min="20" max="300" step="0.1" />
-            </label>
-            <label>
-              허리둘레(cm)
-              <input type="number" name="waist" min="30" max="200" step="0.1" />
-            </label>
-            <label class="full">
-              메모
-              <input type="text" name="note" placeholder="예: 건강검진 결과" />
-            </label>
-            <button type="submit" class="primary-btn full">검사 저장</button>
+          <h3>생활 로그 입력</h3>
+          <form id="hormoneForm" class="form-grid">
+            <label>날짜<input type="date" name="date" required /></label>
+            <label>수면 (시간)<input type="number" name="sleep" min="0" max="24" step="0.5" required /></label>
+            <label>스트레스 (1~5)<input type="number" name="stress" min="1" max="5" required /></label>
+            <label>명상/호흡 (분)<input type="number" name="meditation" min="0" max="180" required /></label>
+            <label class="checkbox-row full"><input type="checkbox" name="sevenHours" /> 7시간 이상 수면을 했어요</label>
+            <label class="checkbox-row full"><input type="checkbox" name="caffeineCut" /> 늦은 카페인을 줄였어요</label>
+            <button type="submit" class="primary-btn full">생활 로그 저장</button>
           </form>
         </div>
 
         <div class="card">
-          <div class="section-title-row">
-            <h3>최신 검사 요약</h3>
-            <span class="pill" id="labLatestDate">-</span>
+          <div class="section-title-row"><h3>최근 호르몬 관리 상태</h3><span class="pill" id="hormonePill">분석중</span></div>
+          <div class="metric-grid three-col">
+            <article class="metric-box"><span>평균 수면</span><strong id="avgSleep">-</strong></article>
+            <article class="metric-box"><span>평균 스트레스</span><strong id="avgStress">-</strong></article>
+            <article class="metric-box"><span>명상 루틴</span><strong id="avgMeditation">-</strong></article>
           </div>
-          <div class="metric-grid two-col">
-            <article class="metric-box"><span>HbA1c</span><strong id="latestA1c">-</strong></article>
-            <article class="metric-box"><span>인슐린</span><strong id="latestInsulin">-</strong></article>
-            <article class="metric-box"><span>체중</span><strong id="latestWeight">-</strong></article>
-            <article class="metric-box"><span>허리둘레</span><strong id="latestWaist">-</strong></article>
-          </div>
-          <div id="labList" class="list-stack"></div>
+          <div id="hormoneInsights" class="insight-stack"></div>
         </div>
       </section>
 
-      <section id="view-lifestyle" class="view">
+      <section id="view-roadmap" class="view">
         <div class="page-header card compact">
-          <h2>생활습관</h2>
-          <p>수면, 스트레스, 명상, 수분, 영양제 루틴을 관리합니다.</p>
+          <h2>12주 대사 리셋 로드맵</h2>
+          <p>단계별 목표를 따라가며 습관을 재설계합니다.</p>
         </div>
 
         <div class="card">
-          <h3>생활습관 입력</h3>
-          <form id="lifestyleForm" class="form-grid">
-            <label>
-              날짜
-              <input type="date" name="date" required />
-            </label>
-            <label>
-              수면시간(시간)
-              <input type="number" name="sleep" min="0" max="24" step="0.5" required />
-            </label>
-            <label>
-              스트레스(1~5)
-              <input type="number" name="stress" min="1" max="5" required />
-            </label>
-            <label>
-              물 섭취(컵)
-              <input type="number" name="water" min="0" max="20" required />
-            </label>
-            <label class="checkbox-row full">
-              <input type="checkbox" name="meditation" />
-              10분 이상 명상/호흡을 했어요
-            </label>
-            <label class="checkbox-row full">
-              <input type="checkbox" name="supplements" />
-              영양제 루틴을 지켰어요
-            </label>
-            <button type="submit" class="primary-btn full">생활습관 저장</button>
-          </form>
+          <div class="section-title-row"><h3>현재 진행 상황</h3><span class="pill" id="roadmapWeekPill">1주차</span></div>
+          <label>현재 주차
+            <input id="weekRange" type="range" min="1" max="12" value="1" />
+          </label>
+          <div class="roadmap-progress"><div id="roadmapProgressFill"></div></div>
+          <div id="roadmapSummary" class="insight-card"></div>
         </div>
 
-        <div class="card">
-          <div class="section-title-row">
-            <h3>최근 생활습관 기록</h3>
-            <span class="pill" id="lifestylePill">관리중</span>
-          </div>
-          <div class="tip-box">
-            <strong>추천 기준</strong>
-            <p>하루 7~8시간 수면과 스트레스 완화는 인슐린 저항성 관리에 도움이 됩니다.</p>
-          </div>
-          <div id="lifestyleList" class="list-stack"></div>
-        </div>
-      </section>
-
-      <section id="view-report" class="view">
-        <div class="page-header card compact">
-          <h2>리포트</h2>
-          <p>혈당과 실천기록을 한 번에 요약합니다.</p>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>핵심 리포트</h3>
-            <span class="pill" id="reportRangePill">최근 7일</span>
-          </div>
-          <div class="metric-grid two-col">
-            <article class="metric-box">
-              <span>공복 평균</span>
-              <strong id="reportFastingAvg">-</strong>
-            </article>
-            <article class="metric-box">
-              <span>식후 평균</span>
-              <strong id="reportPostAvg">-</strong>
-            </article>
-            <article class="metric-box">
-              <span>운동 달성도</span>
-              <strong id="reportExerciseProgress">-</strong>
-            </article>
-            <article class="metric-box">
-              <span>생활습관 점검</span>
-              <strong id="reportLifestyleProgress">-</strong>
-            </article>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>AI 없이도 보는 간단 해석</h3>
-          <div id="reportInsights" class="insight-stack"></div>
-        </div>
+        <div class="phase-grid" id="phaseGrid"></div>
       </section>
     </main>
 
     <nav class="bottom-nav">
-      <button class="nav-btn active" data-nav="home"><span>홈</span></button>
-      <button class="nav-btn" data-nav="glucose"><span>혈당</span></button>
-      <button class="nav-btn" data-nav="meal"><span>식사</span></button>
-      <button class="nav-btn" data-nav="report"><span>리포트</span></button>
+      <button class="nav-btn active" data-nav="home">허브</button>
+      <button class="nav-btn" data-nav="diagnosis">진단</button>
+      <button class="nav-btn" data-nav="glucose">혈당</button>
+      <button class="nav-btn" data-nav="diet">식단</button>
+      <button class="nav-btn" data-nav="exercise">운동</button>
+      <button class="nav-btn" data-nav="roadmap">로드맵</button>
     </nav>
   </div>
 
