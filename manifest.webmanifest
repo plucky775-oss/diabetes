@@ -3,7 +3,7 @@
   "short_name": "Reset",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#07111f",
-  "theme_color": "#0f172a",
+  "background_color": "#eef7f7",
+  "theme_color": "#f4fbfb",
   "icons": []
 }
