@@ -131,6 +131,14 @@ function classifyLab(fasting, a1c) {
   return { text: '안정적', level: 'good' };
 }
 
+function classifyHomaIr(homa) {
+  const value = Number(homa);
+  if (!value) return { text: '판정 전', level: '' };
+  if (value < 2.2) return { text: '양호', level: 'good', detail: '인슐린저항성이 비교적 낮은 편' };
+  if (value < 3.2) return { text: '주의', level: 'warn', detail: '경계 범위로 볼 수 있음' };
+  return { text: '높음', level: 'danger', detail: '인슐린저항성 가능성이 높은 편' };
+}
+
 function calculateHoma(fasting, insulin) {
   if (!fasting || !insulin) return 0;
   return (Number(fasting) * Number(insulin)) / 405;
@@ -184,6 +192,11 @@ function renderHome() {
   if (latestFasting) messageParts.push(`최근 공복은 ${latestFasting.value}mg/dL입니다.`);
   if (latestPostPeak) messageParts.push(`최근 식후 최고는 ${latestPostPeak}mg/dL입니다.`);
   if (lab?.a1c) messageParts.push(`최신 HbA1c는 ${lab.a1c}%입니다.`);
+  if (lab) {
+    const homa = calculateHoma(lab.fasting, lab.insulin);
+    const homaStatus = classifyHomaIr(homa);
+    messageParts.push(`HOMA-IR는 ${homa.toFixed(2)}로 ${homaStatus.text} 수준입니다.`);
+  }
   qs('statusMessage').textContent = messageParts.length ? messageParts.join(' ') : '공복혈당, 식후혈당, HbA1c를 기록하면 한눈에 보기 쉽게 정리됩니다.';
 
   qs('homeFasting').textContent = latestFasting ? `${latestFasting.value}` : '—';
@@ -317,20 +330,24 @@ function renderChart() {
 
 function renderLabItem(item, withActions = true) {
   const homa = calculateHoma(item.fasting, item.insulin);
+  const homaStatus = classifyHomaIr(homa);
   const status = classifyLab(item.fasting, item.a1c);
   const detail = [`공복 ${item.fasting}`, `인슐린 ${item.insulin}`, `HbA1c ${item.a1c}%`].join(' · ');
   return `
     <div class="list-item">
       <div class="list-main">
-        <div class="list-title">
+        <div class="list-title list-title-wrap">
           <strong>${item.date}</strong>
-          <span class="list-tag">${status.text}</span>
+          <div class="tag-row">
+            <span class="list-tag">${status.text}</span>
+            <span class="list-tag ${homaStatus.level || ''}">IR ${homaStatus.text}</span>
+          </div>
         </div>
-        <p>${detail} · HOMA-IR ${homa.toFixed(2)}${item.note ? ` · ${item.note}` : ''}</p>
+        <p>${detail} · HOMA-IR ${homa.toFixed(2)} (${homaStatus.text})${item.note ? ` · ${item.note}` : ''}</p>
       </div>
       ${withActions
         ? `<div class="list-actions"><button class="edit-btn" type="button" data-edit-lab="${item.id}">수정</button><button class="delete-btn" type="button" data-delete-lab="${item.id}">삭제</button></div>`
-        : `<span class="list-tag">${homa.toFixed(2)}</span>`}
+        : `<span class="list-tag ${homaStatus.level || ''}">${homa.toFixed(2)} · ${homaStatus.text}</span>`}
     </div>
   `;
 }
@@ -341,18 +358,21 @@ function renderLabs() {
     qs('labHoma').textContent = '—';
     qs('labFasting').textContent = '—';
     qs('labA1c').textContent = '—';
+    qs('labIrLevel').textContent = '—';
     qs('labInsight').textContent = '검사결과를 입력하면 해석이 표시됩니다.';
   } else {
     const homa = calculateHoma(latest.fasting, latest.insulin);
+    const homaStatus = classifyHomaIr(homa);
     const status = classifyLab(latest.fasting, latest.a1c);
     qs('labHoma').textContent = homa.toFixed(2);
     qs('labFasting').textContent = `${latest.fasting}`;
     qs('labA1c').textContent = `${latest.a1c}%`;
+    qs('labIrLevel').textContent = homaStatus.text;
     qs('labInsight').textContent = status.level === 'good'
-      ? `최신 검사 기준으로는 비교적 안정적인 편입니다. 현재 루틴을 유지하면서 공복과 식후 흐름을 같이 보시면 좋습니다.`
+      ? `최신 HOMA-IR ${homa.toFixed(2)}로 인슐린저항성 수준은 ${homaStatus.text}입니다. 현재 루틴을 유지하면서 공복과 식후 흐름을 같이 보시면 좋습니다.`
       : status.level === 'warn'
-        ? `당뇨전단계 범위에 걸쳐 있을 수 있습니다. 공복혈당과 식후혈당 기록을 함께 보면서 변화를 확인해 보세요.`
-        : `당화혈색소 또는 공복혈당이 높은 편입니다. 검사 수치 추세를 꾸준히 확인하고 필요 시 의료진과 상담하는 것이 좋습니다.`;
+        ? `최신 HOMA-IR ${homa.toFixed(2)}로 인슐린저항성 수준은 ${homaStatus.text}입니다. 공복혈당과 식후혈당 기록을 함께 보면서 변화를 확인해 보세요.`
+        : `최신 HOMA-IR ${homa.toFixed(2)}로 인슐린저항성 수준은 ${homaStatus.text}입니다. 검사 수치 추세를 꾸준히 확인하고 필요 시 의료진과 상담하는 것이 좋습니다.`;
   }
 
   const items = sortByDateTimeDesc(state.diagnosis);
