@@ -63,12 +63,37 @@ input, select {
   line-height: 1.2;
 }
 
-input[type="date"], input[type="time"] { min-height: 56px; }
+input[type="date"], input[type="time"] {
+  min-height: 56px;
+  height: 56px;
+  padding-top: 0;
+  padding-bottom: 0;
+  display: flex;
+  align-items: center;
+}
 input::-webkit-date-and-time-value { text-align: left; }
 input[type="date"]::-webkit-datetime-edit,
 input[type="time"]::-webkit-datetime-edit,
 input[type="date"]::-webkit-date-and-time-value,
 input[type="time"]::-webkit-date-and-time-value { min-width: 0; padding: 0; }
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit {
+  line-height: 56px;
+}
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  min-height: 54px;
+  height: 54px;
+  display: inline-flex;
+  align-items: center;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
+}
 
 input:focus, select:focus {
   border-color: rgba(47, 111, 229, 0.55);

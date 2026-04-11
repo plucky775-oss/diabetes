@@ -1,9 +1,9 @@
-const CACHE_NAME = 'diabetes-care-v4-cache';
+const CACHE_NAME = 'diabetes-care-v5-cache';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=4',
-  './app.js?v=4',
+  './styles.css?v=5',
+  './app.js?v=5',
   './manifest.webmanifest'
 ];
 
