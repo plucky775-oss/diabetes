@@ -1,5 +1,5 @@
-const STORAGE_KEY = 'diabetes-care-v2';
-const LEGACY_KEYS = ['metabolic-reset-v3'];
+const STORAGE_KEY = 'diabetes-care-v3';
+const LEGACY_KEYS = ['diabetes-care-v2', 'metabolic-reset-v3'];
 
 const today = new Date();
 const todayDate = toDateInputValue(today);
@@ -749,7 +749,7 @@ function uid() {
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+      navigator.serviceWorker.register('./service-worker.js').then(() => navigator.serviceWorker.ready).then(() => {}).catch(() => {});
     });
   }
 }

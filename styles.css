@@ -55,6 +55,12 @@ select {
   font: inherit;
 }
 
+input,
+select,
+label {
+  min-width: 0;
+}
+
 button {
   border: 0;
   background: none;
@@ -63,6 +69,7 @@ button {
 
 input,
 select {
+  display: block;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -88,6 +95,16 @@ input::-webkit-date-and-time-value {
   text-align: left;
 }
 
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  min-width: 0;
+  padding: 0;
+}
+
+
 input:focus,
 select:focus {
   border-color: rgba(47, 111, 229, 0.55);
@@ -96,6 +113,7 @@ select:focus {
 
 label {
   display: block;
+  width: 100%;
   min-width: 0;
   color: var(--muted);
   font-size: 14px;
@@ -360,12 +378,13 @@ svg {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
 .form-grid > * {
   min-width: 0;
+  width: 100%;
 }
 
 .form-grid .full {
@@ -552,6 +571,13 @@ svg {
   line-height: 1.7;
 }
 
+
+@media (min-width: 700px) {
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 720px) {
   .hero-header {
     padding: 20px 18px;
@@ -585,7 +611,6 @@ svg {
     padding: 14px 18px;
   }
 
-  .form-grid,
   .metric-grid,
   .metric-grid-small {
     grid-template-columns: 1fr 1fr;
@@ -619,6 +644,12 @@ svg {
   .form-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  input[type="date"],
+  input[type="time"] {
+    font-size: 15px;
+    padding-right: 12px;
   }
 
   .metric-card {
