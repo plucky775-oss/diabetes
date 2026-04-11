@@ -46,13 +46,22 @@ button, input, select {
 }
 
 input, select {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.04);
   border-radius: 16px;
   min-height: 50px;
   padding: 0 14px;
   outline: none;
+}
+
+input[type='date'],
+input[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 input:focus, select:focus {
@@ -326,9 +335,14 @@ label span {
   gap: 12px;
 }
 
+.form-grid > * {
+  min-width: 0;
+}
+
 label {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 label span {
@@ -493,6 +507,14 @@ label span {
 .nav-btn.active {
   background: rgba(56, 189, 248, 0.16);
   color: #dff4ff;
+}
+
+
+@supports (-webkit-touch-callout: none) {
+  .form-grid > label:has(input[type='date']),
+  .form-grid > label:has(input[type='time']) {
+    min-width: 0;
+  }
 }
 
 @media (max-width: 460px) {
