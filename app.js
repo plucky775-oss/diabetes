@@ -1,453 +1,439 @@
-const STORAGE_KEY = ‘metabolic-reset-v3’;
-const today = new Date();
-const nowDate = new Date().toISOString().slice(0,10);
+const STORAGE_KEY = 'diabetes-care-v1';
+const LEGACY_KEY = 'metabolic-reset-v3';
 
-const defaultData = {
-diagnosis: [
-{ date: ‘2026-04-10’, fasting: 102, insulin: 11.8, a1c: 5.8, weight: 76.4, waist: 91, note: ‘초기 기준값’ }
-],
-glucose: [
-{ date: ‘2026-04-06’, time: ‘07:20’, type: ‘fasting’, value: 101, food: ‘’, note: ‘수면 6시간’ },
-{ date: ‘2026-04-07’, time: ‘07:10’, type: ‘fasting’, value: 97, food: ‘’, note: ‘저녁 탄수 적음’ },
-{ date: ‘2026-04-08’, time: ‘13:10’, type: ‘post1’, value: 144, food: ‘냉면’, note: ‘걷기 없음’ },
-{ date: ‘2026-04-08’, time: ‘14:10’, type: ‘post2’, value: 116, food: ‘냉면’, note: ‘’ },
-{ date: ‘2026-04-09’, time: ‘12:55’, type: ‘post1’, value: 128, food: ‘현미밥’, note: ‘식후 15분 걷기’ },
-{ date: ‘2026-04-09’, time: ‘13:55’, type: ‘post2’, value: 108, food: ‘현미밥’, note: ‘’ },
-{ date: ‘2026-04-10’, time: ‘07:15’, type: ‘fasting’, value: 95, food: ‘’, note: ‘아침 공복’ }
-],
-diet: [
-{ date: ‘2026-04-10’, mealType: ‘점심’, reverseMeal: true, chopsticksOnly: true, carbFood: ‘백미’, giSwap: ‘백미 → 현미’, note: ‘액상과당 음료 없음’ }
-],
-exercise: [
-{ date: ‘2026-04-08’, kind: ‘squat’, minutes: 18, intensity: ‘중강도’, goldenTime: false, note: ‘하체 근력’ },
-{ date: ‘2026-04-09’, kind: ‘walking’, minutes: 20, intensity: ‘가벼움’, goldenTime: true, note: ‘점심 후 걷기’ }
-],
-hormone: [
-{ date: ‘2026-04-09’, sleep: 7.5, stress: 2, meditation: 10, sevenHours: true, caffeineCut: true },
-{ date: ‘2026-04-10’, sleep: 6.5, stress: 3, meditation: 5, sevenHours: false, caffeineCut: true }
-],
-missionIndex: 0,
-missionDoneToday: false,
-week: 1
+const defaultState = {
+  diagnosis: [
+    { date: '2026-04-10', fasting: 102, insulin: 11.8, a1c: 5.8, weight: 76.4, waist: 91, note: '초기 기준값' }
+  ],
+  glucose: [
+    { id: createId(), date: '2026-04-06', time: '07:20', type: 'fasting', value: 101, food: '', note: '수면 6시간' },
+    { id: createId(), date: '2026-04-07', time: '07:10', type: 'fasting', value: 97, food: '', note: '저녁 탄수 적음' },
+    { id: createId(), date: '2026-04-08', time: '13:10', type: 'post1', value: 144, food: '냉면', note: '걷기 없음' },
+    { id: createId(), date: '2026-04-08', time: '14:10', type: 'post2', value: 116, food: '냉면', note: '' },
+    { id: createId(), date: '2026-04-09', time: '12:55', type: 'post1', value: 128, food: '현미밥', note: '식후 15분 걷기' },
+    { id: createId(), date: '2026-04-09', time: '13:55', type: 'post2', value: 108, food: '현미밥', note: '' },
+    { id: createId(), date: '2026-04-10', time: '07:15', type: 'fasting', value: 95, food: '', note: '아침 공복' }
+  ]
 };
 
-const missions = [
-{ title: ‘식후 15분 걷기’, text: ‘식사 종료 후 30분 안에 15분 걷기를 완료해 보세요.’, phase: ‘Phase 1’, icon: ‘🏃’ },
-{ title: ‘거꾸로 식사법’, text: ‘채소 → 단백질 → 탄수화물 순서를 한 끼라도 실천해 보세요.’, phase: ‘Phase 1’, icon: ‘🥗’ },
-{ title: ‘하체 근력 루틴’, text: ‘스쿼트 또는 런지를 10분 이상 수행해 GLUT4 자극을 주세요.’, phase: ‘Phase 2’, icon: ‘💪’ },
-{ title: ‘수면 7시간’, text: ‘오늘은 7시간 이상 수면 확보를 목표로 해보세요.’, phase: ‘Phase 3’, icon: ‘😴’ }
-];
+let state = loadState();
+let currentView = 'home';
+let chartRange = 7;
+let chartType = 'fasting';
 
-const giSwaps = [
-[‘백미’, ‘현미’], [‘식빵’, ‘통밀빵’], [‘시리얼’, ‘오트밀’],
-[‘떡’, ‘삶은 고구마’], [‘설탕음료’, ‘무가당 차’], [‘과자’, ‘견과류’]
-];
-
-const roadmapPhases = [
-{ phase: ‘Phase 1’, weeks: ‘1~4주’, goal: ‘기반 재설정’, actions: ‘거꾸로 식사 적응 · 액상과당 완전 차단’ },
-{ phase: ‘Phase 2’, weeks: ’5~8주’, goal: ‘집중 연소’, actions: ‘하체 저항성 운동 루틴화 · 초기 체중 3% 감량’ },
-{ phase: ‘Phase 3’, weeks: ‘9~12주’, goal: ‘대사 안착’, actions: ’목표 체중 5~7% 달성 · 대사 유연성 지표 정상화’ }
-];
-
-let state = load();
-let currentView = ‘home’;
-let currentRange = 7;
-let currentType = ‘fasting’;
-let timerInterval = null;
-let timerSeconds = 300;
-let timerStageIndex = 0;
-const timerStages = [
-{ name: ‘채소’, seconds: 300, guide: ‘채소 5분부터 시작하세요.’ },
-{ name: ‘단백질’, seconds: 300, guide: ‘단백질 5분 단계입니다.’ },
-{ name: ‘탄수화물’, seconds: 600, guide: ‘이제 탄수화물을 천천히 드세요.’ }
-];
-
-function load() {
-const raw = localStorage.getItem(STORAGE_KEY);
-if (!raw) return structuredClone(defaultData);
-try { return { …structuredClone(defaultData), …JSON.parse(raw) }; }
-catch { return structuredClone(defaultData); }
+function createId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
-function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function qs(id) { return document.getElementById(id); }
-function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
-function sortDesc(items, key=‘date’) {
-return […items].sort((a,b) => (`${b[key]}${b.time||''}`).localeCompare(`${a[key]}${a.time||''}`));
+
+function qs(id) {
+  return document.getElementById(id);
 }
-function recentWithinDays(items, days) {
-const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - (days - 1));
-return items.filter(item => new Date(item.date) >= cutoff);
+
+function sortByDateTimeDesc(items) {
+  return [...items].sort((a, b) => `${b.date}${b.time || ''}`.localeCompare(`${a.date}${a.time || ''}`));
 }
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY);
+  if (!raw) {
+    return structuredClone(defaultState);
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const glucose = Array.isArray(parsed.glucose) ? parsed.glucose.map(item => ({ ...item, id: item.id || createId() })) : [];
+    const diagnosis = Array.isArray(parsed.diagnosis) ? parsed.diagnosis.map(item => ({ ...item, id: item.id || createId() })) : [];
+    return {
+      diagnosis: diagnosis.length ? diagnosis : structuredClone(defaultState.diagnosis),
+      glucose: glucose.length ? glucose : structuredClone(defaultState.glucose)
+    };
+  } catch (error) {
+    return structuredClone(defaultState);
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function nowParts() {
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  return { date, time };
+}
+
+function average(values) {
+  return values.length ? values.reduce((sum, value) => sum + Number(value), 0) / values.length : 0;
+}
+
+function recentDaysFilter(items, days) {
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - (days - 1));
+  return items.filter(item => new Date(item.date) >= cutoff);
+}
+
+function glucoseTypeLabel(type) {
+  return ({ fasting: '공복', post1: '식후 1시간', post2: '식후 2시간' })[type] || type;
+}
+
+function classifyGlucose(value, type) {
+  const num = Number(value);
+  if (type === 'fasting') {
+    if (num < 100) return { text: '양호', level: 'good' };
+    if (num <= 125) return { text: '주의', level: 'warn' };
+    return { text: '높음', level: 'danger' };
+  }
+  const target = type === 'post1' ? 140 : 120;
+  if (num <= target) return { text: '양호', level: 'good' };
+  if (num <= target + 20) return { text: '주의', level: 'warn' };
+  return { text: '높음', level: 'danger' };
+}
+
+function classifyLab(fasting, a1c) {
+  const fastingNum = Number(fasting);
+  const a1cNum = Number(a1c);
+  if (fastingNum >= 126 || a1cNum >= 6.5) return { text: '집중관리', level: 'danger' };
+  if (fastingNum >= 100 || a1cNum >= 5.7) return { text: '주의관리', level: 'warn' };
+  return { text: '안정적', level: 'good' };
+}
+
 function calculateHoma(fasting, insulin) {
-return fasting && insulin ? (Number(fasting) * Number(insulin)) / 405 : 0;
-}
-function classifyPrediabetes(fasting, a1c) {
-if (Number(a1c) >= 6.5 || Number(fasting) >= 126) return ‘당뇨병 범위’;
-if ((Number(a1c) >= 5.7 && Number(a1c) <= 6.4) || (Number(fasting) >= 100 && Number(fasting) <= 125)) return ‘당뇨전단계’;
-return ‘정상 범위’;
-}
-function metabolicState(score) {
-if (score >= 75) return ‘대사 유연성 회복 구간’;
-if (score >= 50) return ‘전환 구간’;
-return ‘혈당 스파이크 경계 구간’;
-}
-function getMetabolicScore() {
-const latestDx = sortDesc(state.diagnosis)[0];
-const fastingAvg = avg(recentWithinDays(state.glucose.filter(x=>x.type===‘fasting’), 7).map(x=>x.value)) || (latestDx?.fasting || 100);
-const postAvg = avg(recentWithinDays(state.glucose.filter(x=>x.type!==‘fasting’), 7).map(x=>x.value)) || 130;
-const sleepAvg = avg(recentWithinDays(state.hormone, 7).map(x=>x.sleep)) || 7;
-const exerciseMins = recentWithinDays(state.exercise, 7).reduce((a,b)=>a+Number(b.minutes),0);
-let score = 100;
-score -= Math.max(0, fastingAvg - 90) * 0.9;
-score -= Math.max(0, postAvg - 120) * 0.45;
-score += Math.min(10, (sleepAvg - 6) * 4);
-score += Math.min(10, exerciseMins / 20);
-return Math.max(15, Math.min(98, Math.round(score)));
-}
-function getExerciseGap() {
-const latest = sortDesc(state.exercise)[0];
-if (!latest) return 99;
-return Math.floor((today - new Date(latest.date)) / (1000*60*60*24));
-}
-function getRiskFoods() {
-const foods = {};
-state.glucose.filter(x => x.food && x.type !== ‘fasting’).forEach(x => {
-if (!foods[x.food]) foods[x.food] = [];
-foods[x.food].push(Number(x.value));
-});
-return Object.entries(foods)
-.map(([food, vals]) => ({ food, avg: avg(vals), count: vals.length }))
-.sort((a,b) => b.avg - a.avg);
+  if (!fasting || !insulin) return 0;
+  return (Number(fasting) * Number(insulin)) / 405;
 }
 
-function renderView(view) {
-currentView = view;
-document.querySelectorAll(’.view’).forEach(v => v.classList.remove(‘active’));
-qs(`view-${view}`).classList.add(‘active’);
-document.querySelectorAll(’.nav-btn’).forEach(btn =>
-btn.classList.toggle(‘active’, btn.dataset.nav === view)
-);
-window.scrollTo({ top: 0, behavior: ‘smooth’ });
+function latestGlucose(type) {
+  return sortByDateTimeDesc(state.glucose.filter(item => item.type === type))[0] || null;
 }
 
-function setDefaults() {
-document.querySelectorAll(‘input[type=“date”]’).forEach(i => { if (!i.value) i.value = nowDate; });
-const glucoseTime = document.querySelector(’#glucoseForm input[name=“time”]’);
-if (glucoseTime && !glucoseTime.value) {
-glucoseTime.value = `${String(today.getHours()).padStart(2,'0')}:${String(today.getMinutes()).padStart(2,'0')}`;
-}
+function latestLab() {
+  return sortByDateTimeDesc(state.diagnosis)[0] || null;
 }
 
-function renderDashboard() {
-const score = getMetabolicScore();
-qs(‘metabolicScore’).textContent = score;
-qs(‘rangeFill’).style.width = `${score}%`;
-qs(‘statusLabel’).textContent = score >= 75 ? ‘대사 유연성 구역’ : score >= 50 ? ‘전환 구역’ : ‘스파이크 경계’;
-const dot = qs(‘statusDot’);
-dot.style.background = score >= 75 ? ‘#22c55e’ : score >= 50 ? ‘#f59e0b’ : ‘#ef4444’;
-dot.style.boxShadow = `0 0 10px ${score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444'}`;
-qs(‘metabolicSummary’).textContent = metabolicState(score);
-
-const mission = missions[state.missionIndex % missions.length];
-qs(‘todayMissionTitle’).textContent = mission.title;
-qs(‘todayMissionText’).textContent = mission.text;
-qs(‘phasePill’).textContent = mission.phase + (state.missionDoneToday ? ’ · ✓ 완료’ : ‘’);
-document.querySelector(’.mission-icon’).textContent = mission.icon;
-
-// Show badge dot if mission not done
-const badgeDot = qs(‘missionDotBadge’);
-if (badgeDot) badgeDot.classList.toggle(‘visible’, !state.missionDoneToday);
-
-const fastingList = sortDesc(state.glucose.filter(x=>x.type===‘fasting’));
-const latestDx = sortDesc(state.diagnosis)[0];
-const homa = latestDx ? calculateHoma(latestDx.fasting, latestDx.insulin) : 0;
-const gap = getExerciseGap();
-const riskFood = getRiskFoods()[0];
-
-qs(‘homeFasting’).textContent = fastingList[0] ? `${fastingList[0].value}` : ‘—’;
-qs(‘homeHoma’).textContent = homa ? homa.toFixed(2) : ‘—’;
-qs(‘homeExerciseGap’).textContent = `${gap}일`;
-qs(‘homeRiskFood’).textContent = riskFood?.food || ‘데이터 필요’;
-
-renderHomeChart();
+function formatValue(value, suffix = '') {
+  if (value === undefined || value === null || value === '') return '—';
+  return `${value}${suffix}`;
 }
 
-function renderHomeChart() {
-const svg = qs(‘roadmapChart’);
-const items = sortDesc(state.glucose).slice(0, 12).reverse();
-if (!items.length) { svg.innerHTML = ‘’; return; }
-const w = 360, h = 160, px = 20, py = 16;
-const values = items.map(x => Number(x.value));
-const min = Math.max(60, Math.min(…values) - 10);
-const max = Math.max(180, Math.max(…values) + 10);
-const stepX = (w - px * 2) / Math.max(1, items.length - 1);
-const toY = v => h - py - ((v - min) / (max - min)) * (h - py * 2);
-const pts = items.map((item, i) => [px + i * stepX, toY(item.value), item]);
-const polyline = pts.map(([x,y]) => `${x},${y}`).join(’ ‘);
-const dots = pts.map(([x,y,item]) => {
-const col = item.value >= 140 ? ‘#ef4444’ : item.value >= 110 ? ‘#f59e0b’ : ‘#22c55e’;
-return `<circle cx="${x}" cy="${y}" r="4.5" fill="${col}" opacity="0.9"/>`;
-}).join(’’);
-// Filled area
-const area = `${px},${h - py} ${pts.map(([x,y])=>`${x},${y}`).join(' ')} ${px + (items.length-1)*stepX},${h - py}`;
-svg.innerHTML = ` <defs> <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"> <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.15"/> <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/> </linearGradient> </defs> <polygon points="${area}" fill="url(#areaGrad)"/> <polyline fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linejoin="round" points="${polyline}"/> ${dots} <text x="${px}" y="14" fill="#94a3b8" font-size="11" font-family="DM Sans,sans-serif">최근 혈당 흐름</text>`;
+function setTodayDefaults() {
+  const { date, time } = nowParts();
+  if (qs('glucoseDate')) qs('glucoseDate').value = date;
+  if (qs('glucoseTime')) qs('glucoseTime').value = time;
+  if (qs('labDate')) qs('labDate').value = date;
+  qs('todayText').textContent = `${date} 기준 기록을 관리할 수 있어요.`;
 }
 
-function renderDiagnosis() {
-const latest = sortDesc(state.diagnosis)[0];
-if (!latest) return;
-const homa = calculateHoma(latest.fasting, latest.insulin);
-const risk = classifyPrediabetes(latest.fasting, latest.a1c);
-const score = getMetabolicScore();
-qs(‘diagnosisDatePill’).textContent = latest.date;
-qs(‘diagHoma’).textContent = homa.toFixed(2);
-qs(‘diagPrediabetes’).textContent = risk;
-qs(‘diagState’).textContent = metabolicState(score);
-qs(‘diagInsight’).textContent = homa >= 2.5
-? `HOMA-R ${homa.toFixed(2)}로 인슐린 저항성 관리가 필요합니다. 식후 걷기와 하체 근력 루틴을 우선 강화하세요.`
-: `HOMA-R ${homa.toFixed(2)}로 비교적 양호합니다. 식후 스파이크와 수면 패턴도 같이 관리하면 좋습니다.`;
-qs(‘diagnosisList’).innerHTML = sortDesc(state.diagnosis).map(item => {
-const h = calculateHoma(item.fasting, item.insulin);
-return `<div class="list-item"> <div class="list-item-top"><strong>${item.date}</strong><small>HOMA-R ${h.toFixed(2)}</small></div> <div style="font-size:14px;color:#8ba0bd">공복 ${item.fasting} · 인슐린 ${item.insulin} · HbA1c ${item.a1c}%</div> ${item.note ? `<small>${item.note}</small>` : ''} </div>`;
-}).join(’’);
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.view').forEach(section => {
+    section.classList.toggle('active', section.id === `view-${view}`);
+  });
+  document.querySelectorAll('.nav-btn').forEach(button => {
+    button.classList.toggle('active', button.dataset.view === view);
+  });
 }
 
-function renderGlucose() {
-const source = recentWithinDays(state.glucose.filter(x=>x.type===currentType), currentRange)
-.sort((a,b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
-const svg = qs(‘glucoseChart’);
-const summaryEl = qs(‘glucoseSummaryText’);
-if (!source.length) {
-svg.innerHTML = ‘<text x="50%" y="50%" text-anchor="middle" fill="#6a85a4" font-size="14">기록이 없습니다</text>’;
-summaryEl.textContent = ‘기록이 부족합니다.’;
-qs(‘riskFoodList’).innerHTML = ‘<div class="list-item"><strong>아직 음식별 데이터가 부족합니다.</strong></div>’;
-return;
-}
-const w=360, h=200, px=28, py=24;
-const values = source.map(x=>Number(x.value));
-const min = Math.max(60, Math.min(…values, 90) - 10);
-const max = Math.max(…values, 160) + 10;
-const stepX = (w - px*2) / Math.max(1, source.length - 1);
-const target = currentType===‘fasting’ ? 100 : currentType===‘post1’ ? 140 : 120;
-const toY = v => h - py - ((v - min) / (max - min)) * (h - py*2);
-const targetY = toY(target);
-const pts = source.map((item,i) => [px + i * stepX, toY(item.value), item]);
-const polyline = pts.map(([x,y]) => `${x},${y}`).join(’ ‘);
-const area = `${px},${h-py} ${pts.map(([x,y])=>`${x},${y}`).join(' ')} ${px+(source.length-1)*stepX},${h-py}`;
-const dots = pts.map(([x,y,item]) =>
-`<circle cx="${x}" cy="${y}" r="5" fill="${item.value > target ? '#ef4444' : '#22c55e'}"/>`
-).join(’’);
-svg.innerHTML = ` <defs> <linearGradient id="gGrad" x1="0" y1="0" x2="0" y2="1"> <stop offset="0%" stop-color="#22c55e" stop-opacity="0.12"/> <stop offset="100%" stop-color="#22c55e" stop-opacity="0"/> </linearGradient> </defs> <line x1="${px}" y1="${targetY}" x2="${w-px}" y2="${targetY}" stroke="#f59e0b" stroke-dasharray="5 5" stroke-opacity="0.6"/> <polygon points="${area}" fill="url(#gGrad)"/> <polyline fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linejoin="round" points="${polyline}"/> ${dots} <text x="${px}" y="18" fill="#94a3b8" font-size="11" font-family="DM Sans,sans-serif">${currentType==='fasting'?'공복':'식후'} ${currentRange}일</text> <text x="${w-px}" y="${targetY-6}" text-anchor="end" fill="#f59e0b" font-size="11" font-family="DM Sans,sans-serif">기준 ${target}</text>`;
-const average = avg(values);
-const maxVal = Math.max(…values);
-summaryEl.textContent = `평균 ${average.toFixed(1)} mg/dL · 최고 ${maxVal} mg/dL · 기준 ${target} mg/dL`;
-qs(‘riskFoodList’).innerHTML = getRiskFoods().map(item =>
-`<div class="list-item"> <div class="list-item-top"><strong>${item.food}</strong><small>평균 ${item.avg.toFixed(1)} mg/dL</small></div> <small>${item.count}회 기록</small> </div>`
-).join(’’) || ‘<div class="list-item"><strong>아직 음식별 데이터가 부족합니다.</strong></div>’;
+function renderHome() {
+  const latestFasting = latestGlucose('fasting');
+  const latestPost1 = latestGlucose('post1');
+  const latestPost2 = latestGlucose('post2');
+  const lab = latestLab();
+
+  const latestPostValues = [latestPost1?.value, latestPost2?.value].filter(Boolean).map(Number);
+  const latestPostPeak = latestPostValues.length ? Math.max(...latestPostValues) : null;
+  const statusBase = lab ? classifyLab(lab.fasting, lab.a1c) : (latestFasting ? classifyGlucose(latestFasting.value, 'fasting') : { text: '준비중', level: '' });
+
+  qs('statusTitle').textContent = statusBase.level === 'good' ? '지금 흐름은 비교적 안정적입니다' : statusBase.level === 'warn' ? '혈당 흐름을 조금 더 관리해 주세요' : statusBase.level === 'danger' ? '기록을 보며 집중 관리가 필요합니다' : '기록을 시작해 주세요';
+  qs('statusChip').textContent = statusBase.text;
+  qs('statusChip').className = `status-chip ${statusBase.level || ''}`.trim();
+
+  const messageParts = [];
+  if (latestFasting) messageParts.push(`최근 공복은 ${latestFasting.value}mg/dL입니다.`);
+  if (latestPostPeak) messageParts.push(`최근 식후 최고는 ${latestPostPeak}mg/dL입니다.`);
+  if (lab?.a1c) messageParts.push(`최신 HbA1c는 ${lab.a1c}%입니다.`);
+  qs('statusMessage').textContent = messageParts.length ? messageParts.join(' ') : '공복혈당, 식후혈당, HbA1c를 기록하면 한눈에 보기 쉽게 정리됩니다.';
+
+  qs('homeFasting').textContent = latestFasting ? `${latestFasting.value}` : '—';
+  qs('homePostPeak').textContent = latestPostPeak ? `${latestPostPeak}` : '—';
+  qs('homeA1c').textContent = lab?.a1c ? `${lab.a1c}%` : '—';
+  qs('homeHoma').textContent = lab ? calculateHoma(lab.fasting, lab.insulin).toFixed(2) : '—';
+
+  const fasting7 = recentDaysFilter(state.glucose.filter(item => item.type === 'fasting'), 7);
+  const post7 = recentDaysFilter(state.glucose.filter(item => item.type !== 'fasting'), 7);
+  const fastingAvg = average(fasting7.map(item => item.value));
+  const postAvg = average(post7.map(item => item.value));
+
+  qs('avgFasting7').textContent = fastingAvg ? `${fastingAvg.toFixed(1)}` : '—';
+  qs('avgPost7').textContent = postAvg ? `${postAvg.toFixed(1)}` : '—';
+  qs('fastingTrend').textContent = fasting7.length >= 2 ? trendText(fasting7.map(item => item.value), 'fasting') : '기록이 더 필요합니다';
+  qs('postTrend').textContent = post7.length >= 2 ? trendText(post7.map(item => item.value), 'post') : '기록이 더 필요합니다';
+
+  const recentGlucose = sortByDateTimeDesc(state.glucose).slice(0, 3);
+  qs('homeRecentGlucoseList').innerHTML = recentGlucose.length ? recentGlucose.map(item => renderGlucoseItem(item, false)).join('') : emptyState('아직 혈당 기록이 없습니다.');
+
+  const recentLabs = sortByDateTimeDesc(state.diagnosis).slice(0, 2);
+  qs('homeRecentLabList').innerHTML = recentLabs.length ? recentLabs.map(item => renderLabItem(item, false)).join('') : emptyState('아직 혈액검사 기록이 없습니다.');
 }
 
-function renderDiet() {
-qs(‘giSwapList’).innerHTML = giSwaps.map(([from,to]) =>
-`<div class="chip"><span>${from}</span><strong>→ ${to}</strong></div>`
-).join(’’);
-const latest = sortDesc(state.diet).slice(0,8);
-const score = latest.reduce((s,x) => s + (x.reverseMeal?2:0) + (x.chopsticksOnly?1:0) + (x.giSwap?1:0), 0);
-qs(‘dietScorePill’).textContent = `${score}점`;
-qs(‘dietList’).innerHTML = latest.map(item =>
-`<div class="list-item"> <div class="list-item-top"><strong>${item.date} · ${item.mealType}</strong><small>${item.giSwap || '대안 없음'}</small></div> <div style="font-size:13px;color:#8ba0bd">${item.reverseMeal?'거꾸로 ✓':'—'} · ${item.chopsticksOnly?'젓가락 ✓':'—'}</div> ${item.note ? `<small>${item.note}</small>` : ''} </div>`
-).join(’’);
+function trendText(values, kind) {
+  if (values.length < 2) return '기록이 더 필요합니다';
+  const sorted = values.map(Number);
+  const delta = sorted[sorted.length - 1] - sorted[0];
+  if (Math.abs(delta) < 3) return '큰 변화 없이 유지 중';
+  if (delta < 0) return kind === 'fasting' ? '최근 공복이 내려가는 흐름' : '최근 식후 반응이 완만해지는 흐름';
+  return kind === 'fasting' ? '최근 공복이 올라가는 흐름' : '최근 식후 반응이 높아지는 흐름';
 }
 
-function renderExercise() {
-const recent = recentWithinDays(state.exercise, 7);
-const aerobic = recent.filter(x => [‘walking’,‘cardio’].includes(x.kind)).reduce((a,b)=>a+Number(b.minutes),0);
-const strength = recent.filter(x => [‘squat’,‘lunge’].includes(x.kind)).length;
-const gap = getExerciseGap();
-qs(‘exerciseAerobic’).textContent = `${aerobic}분`;
-qs(‘exerciseStrength’).textContent = `${strength}회`;
-qs(‘exerciseGap’).textContent = `${gap}일`;
-qs(‘homeExerciseGap’).textContent = `${gap}일`;
-qs(‘gapPill’).textContent = gap >= 2 ? ‘⚠ 경고’ : ‘정상’;
-qs(‘gapPill’).classList.toggle(‘warn’, gap >= 2);
-qs(‘gapMessage’).textContent = gap >= 2
-? `연속 ${gap}일 공백입니다. 오늘 하체 근력 또는 식후 걷기를 넣어주세요.`
-: ‘운동 공백 관리가 잘 되고 있습니다. 이 흐름을 유지하세요.’;
-const labelEx = k => ({walking:‘식후 걷기’, squat:‘스쿼트’, lunge:‘런지’, cardio:‘유산소’})[k] || k;
-qs(‘exerciseList’).innerHTML = sortDesc(state.exercise).map(item =>
-`<div class="list-item"> <div class="list-item-top"><strong>${item.date} · ${labelEx(item.kind)}</strong><small>${item.minutes}분</small></div> <div style="font-size:13px;color:#8ba0bd">${item.intensity} · ${item.goldenTime?'🟢 골든타임':'일반'}</div> ${item.note ? `<small>${item.note}</small>` : ''} </div>`
-).join(’’);
+function emptyState(text) {
+  return `<div class="empty-state">${text}</div>`;
 }
 
-function renderHormone() {
-const recent = recentWithinDays(state.hormone, 7);
-const sleepAvg = avg(recent.map(x=>x.sleep));
-const stressAvg = avg(recent.map(x=>x.stress));
-const medAvg = avg(recent.map(x=>x.meditation));
-qs(‘avgSleep’).textContent = recent.length ? `${sleepAvg.toFixed(1)}h` : ‘—’;
-qs(‘avgStress’).textContent = recent.length ? stressAvg.toFixed(1) : ‘—’;
-qs(‘avgMeditation’).textContent = recent.length ? `${medAvg.toFixed(0)}분` : ‘—’;
-qs(‘hormonePill’).textContent = sleepAvg >= 7 && stressAvg <= 2.5 ? ‘안정적’ : ‘조정 필요’;
-const insights = [];
-if (sleepAvg && sleepAvg < 7) insights.push(‘최근 평균 수면이 7시간 미만입니다. 공복혈당 안정화를 위해 취침 시간을 앞당겨 보세요.’);
-if (stressAvg && stressAvg >= 3) insights.push(‘스트레스가 높은 편입니다. 10분 호흡 또는 명상 루틴을 고정해 두면 좋습니다.’);
-if (medAvg && medAvg < 10) insights.push(‘명상 루틴이 짧습니다. 최소 10분을 목표로 설정해 보세요.’);
-if (!insights.length) insights.push(‘수면과 스트레스 관리가 안정적입니다. 이 흐름을 유지하면 대사 회복에 유리합니다.’);
-qs(‘hormoneInsights’).innerHTML = insights.map(t => `<div class="insight-card">${t}</div>`).join(’’);
+function renderGlucoseItem(item, withDelete = true) {
+  const status = classifyGlucose(item.value, item.type);
+  const detailText = [item.food, item.note].filter(Boolean).join(' · ');
+  return `
+    <div class="list-item">
+      <div class="list-main">
+        <div class="list-title">
+          <span class="list-tag">${glucoseTypeLabel(item.type)}</span>
+          <strong>${item.value} mg/dL</strong>
+          <span class="list-meta">${item.date} ${item.time || ''}</span>
+        </div>
+        <p>${detailText || '추가 메모 없음'}</p>
+      </div>
+      ${withDelete ? `<button class="delete-btn" type="button" data-delete-glucose="${item.id}">삭제</button>` : `<span class="list-tag">${status.text}</span>`}
+    </div>
+  `;
 }
 
-function renderRoadmap() {
-const week = Number(state.week || 1);
-qs(‘weekRange’).value = week;
-qs(‘roadmapWeekPill’).textContent = `${week}주차`;
-qs(‘roadmapProgressFill’).style.width = `${(week/12)*100}%`;
-let phaseText = ‘’;
-if (week <= 4) phaseText = ‘Phase 1 · 기반 재설정: 거꾸로 식사 적응, 액상과당 차단에 집중하는 시기입니다.’;
-else if (week <= 8) phaseText = ‘Phase 2 · 집중 연소: 하체 저항성 운동을 루틴화하고 초기 체중 3% 감량을 노립니다.’;
-else phaseText = ‘Phase 3 · 대사 안착: 목표 체중 5~7%와 대사 유연성 안정화에 집중하는 단계입니다.’;
-qs(‘roadmapSummary’).textContent = phaseText;
-qs(‘phaseGrid’).innerHTML = roadmapPhases.map(phase =>
-`<div class="card"> <div class="section-title-row"> <h3>${phase.phase}</h3> <span class="pill">${phase.weeks}</span> </div> <div class="insight-card"> <strong style="font-size:15px;display:block;margin-bottom:6px">${phase.goal}</strong> <span style="font-size:13px">${phase.actions}</span> </div> </div>`
-).join(’’);
+function renderLog() {
+  const items = sortByDateTimeDesc(state.glucose);
+  qs('glucoseList').innerHTML = items.length ? items.map(item => renderGlucoseItem(item, true)).join('') : emptyState('아직 저장된 혈당 기록이 없습니다.');
+}
+
+function renderChart() {
+  const target = chartType === 'fasting' ? 100 : chartType === 'post1' ? 140 : 120;
+  const source = sortByDateTimeDesc(recentDaysFilter(state.glucose.filter(item => item.type === chartType), chartRange)).reverse();
+  const svg = qs('glucoseChart');
+
+  document.querySelectorAll('#rangeButtons .seg-btn').forEach(button => {
+    button.classList.toggle('active', Number(button.dataset.range) === chartRange);
+  });
+  document.querySelectorAll('#typeButtons .seg-btn').forEach(button => {
+    button.classList.toggle('active', button.dataset.type === chartType);
+  });
+
+  if (!source.length) {
+    svg.innerHTML = `<rect x="0" y="0" width="360" height="220" rx="16" fill="rgba(255,255,255,0.02)"></rect><text x="180" y="110" text-anchor="middle" fill="#94a3b8" font-size="14">기록이 없습니다</text>`;
+    qs('chartAvg').textContent = '—';
+    qs('chartMax').textContent = '—';
+    qs('chartMin').textContent = '—';
+    qs('chartNote').textContent = '선택한 기간에 데이터가 없습니다.';
+    return;
+  }
+
+  const values = source.map(item => Number(item.value));
+  const minValue = Math.max(60, Math.min(...values, target) - 10);
+  const maxValue = Math.max(...values, target) + 10;
+  const w = 360;
+  const h = 220;
+  const px = 26;
+  const py = 24;
+  const graphW = w - px * 2;
+  const graphH = h - py * 2;
+  const stepX = source.length === 1 ? 0 : graphW / (source.length - 1);
+  const toY = value => h - py - ((value - minValue) / (maxValue - minValue || 1)) * graphH;
+  const points = source.map((item, index) => ({
+    x: px + stepX * index,
+    y: toY(Number(item.value)),
+    item
+  }));
+  const pathPoints = points.map(point => `${point.x},${point.y}`).join(' ');
+  const areaPoints = `${px},${h - py} ${points.map(point => `${point.x},${point.y}`).join(' ')} ${points[points.length - 1].x},${h - py}`;
+  const targetY = toY(target);
+  const dots = points.map(point => {
+    const stateClass = classifyGlucose(point.item.value, chartType);
+    const fill = stateClass.level === 'good' ? '#22c55e' : stateClass.level === 'warn' ? '#f59e0b' : '#ef4444';
+    return `<circle cx="${point.x}" cy="${point.y}" r="5" fill="${fill}"></circle>`;
+  }).join('');
+  const labels = points.map(point => `<text x="${point.x}" y="204" text-anchor="middle" fill="#94a3b8" font-size="10">${point.item.date.slice(5)}</text>`).join('');
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.28"></stop>
+        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"></stop>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="360" height="220" rx="18" fill="rgba(255,255,255,0.02)"></rect>
+    <line x1="${px}" y1="${targetY}" x2="${w - px}" y2="${targetY}" stroke="#f59e0b" stroke-dasharray="5 5" stroke-opacity="0.7"></line>
+    <polygon points="${areaPoints}" fill="url(#areaFill)"></polygon>
+    <polyline points="${pathPoints}" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+    ${dots}
+    ${labels}
+    <text x="${w - px}" y="${targetY - 8}" text-anchor="end" fill="#fbbf24" font-size="11">기준 ${target}</text>
+  `;
+
+  qs('chartAvg').textContent = `${average(values).toFixed(1)}`;
+  qs('chartMax').textContent = `${Math.max(...values)}`;
+  qs('chartMin').textContent = `${Math.min(...values)}`;
+  qs('chartNote').textContent = `${glucoseTypeLabel(chartType)} ${chartRange}일 기준으로 ${source.length}개 기록을 반영했습니다.`;
+}
+
+function renderLabItem(item, withDelete = true) {
+  const homa = calculateHoma(item.fasting, item.insulin);
+  const status = classifyLab(item.fasting, item.a1c);
+  const detail = [`공복 ${item.fasting}`, `인슐린 ${item.insulin}`, `HbA1c ${item.a1c}%`].join(' · ');
+  return `
+    <div class="list-item">
+      <div class="list-main">
+        <div class="list-title">
+          <strong>${item.date}</strong>
+          <span class="list-tag">${status.text}</span>
+        </div>
+        <p>${detail} · HOMA-R ${homa.toFixed(2)}${item.note ? ` · ${item.note}` : ''}</p>
+      </div>
+      ${withDelete ? `<button class="delete-btn" type="button" data-delete-lab="${item.id}">삭제</button>` : `<span class="list-tag">${homa.toFixed(2)}</span>`}
+    </div>
+  `;
+}
+
+function renderLabs() {
+  const latest = latestLab();
+  if (!latest) {
+    qs('labHoma').textContent = '—';
+    qs('labFasting').textContent = '—';
+    qs('labA1c').textContent = '—';
+    qs('labInsight').textContent = '검사결과를 입력하면 해석이 표시됩니다.';
+  } else {
+    const homa = calculateHoma(latest.fasting, latest.insulin);
+    const status = classifyLab(latest.fasting, latest.a1c);
+    qs('labHoma').textContent = homa.toFixed(2);
+    qs('labFasting').textContent = `${latest.fasting}`;
+    qs('labA1c').textContent = `${latest.a1c}%`;
+    qs('labInsight').textContent = status.level === 'good'
+      ? `최신 검사 기준으로는 비교적 안정적인 편입니다. 현재 루틴을 유지하면서 공복과 식후 흐름을 같이 보시면 좋습니다.`
+      : status.level === 'warn'
+        ? `당뇨전단계 범위에 걸쳐 있을 수 있습니다. 공복혈당과 식후혈당 기록을 함께 보면서 변화를 확인해 보세요.`
+        : `당화혈색소 또는 공복혈당이 높은 편입니다. 검사 수치 추세를 꾸준히 확인하고 필요 시 의료진과 상담하는 것이 좋습니다.`;
+  }
+
+  const items = sortByDateTimeDesc(state.diagnosis);
+  qs('labList').innerHTML = items.length ? items.map(item => renderLabItem(item, true)).join('') : emptyState('아직 혈액검사 기록이 없습니다.');
 }
 
 function renderAll() {
-renderDashboard();
-renderDiagnosis();
-renderGlucose();
-renderDiet();
-renderExercise();
-renderHormone();
-renderRoadmap();
-setDefaults();
-save();
+  renderHome();
+  renderLog();
+  renderChart();
+  renderLabs();
+  saveState();
 }
 
-// ── BIND NAVIGATION ──
-document.querySelectorAll(’[data-nav]’).forEach(btn =>
-btn.addEventListener(‘click’, () => renderView(btn.dataset.nav))
-);
-
-// ── BIND FORMS ──
-qs(‘diagnosisForm’).addEventListener(‘submit’, e => {
-e.preventDefault();
-state.diagnosis.unshift(Object.fromEntries(new FormData(e.target)));
-renderAll(); e.target.reset(); setDefaults(); renderView(‘diagnosis’);
-});
-qs(‘glucoseForm’).addEventListener(‘submit’, e => {
-e.preventDefault();
-const entry = Object.fromEntries(new FormData(e.target));
-entry.value = Number(entry.value);
-state.glucose.unshift(entry);
-renderAll(); e.target.reset(); setDefaults(); renderView(‘glucose’);
-});
-qs(‘dietForm’).addEventListener(‘submit’, e => {
-e.preventDefault();
-const fd = new FormData(e.target);
-const entry = Object.fromEntries(fd);
-entry.reverseMeal = fd.get(‘reverseMeal’) === ‘on’;
-entry.chopsticksOnly = fd.get(‘chopsticksOnly’) === ‘on’;
-state.diet.unshift(entry);
-renderAll(); e.target.reset(); setDefaults(); renderView(‘diet’);
-});
-qs(‘exerciseForm’).addEventListener(‘submit’, e => {
-e.preventDefault();
-const fd = new FormData(e.target);
-const entry = Object.fromEntries(fd);
-entry.minutes = Number(entry.minutes);
-entry.goldenTime = fd.get(‘goldenTime’) === ‘on’;
-state.exercise.unshift(entry);
-renderAll(); e.target.reset(); setDefaults(); renderView(‘exercise’);
-});
-qs(‘hormoneForm’).addEventListener(‘submit’, e => {
-e.preventDefault();
-const fd = new FormData(e.target);
-const entry = Object.fromEntries(fd);
-entry.sleep = Number(entry.sleep);
-entry.stress = Number(entry.stress);
-entry.meditation = Number(entry.meditation);
-entry.sevenHours = fd.get(‘sevenHours’) === ‘on’;
-entry.caffeineCut = fd.get(‘caffeineCut’) === ‘on’;
-state.hormone.unshift(entry);
-renderAll(); e.target.reset(); setDefaults(); renderView(‘hormone’);
-});
-
-// ── CHART CONTROLS ──
-document.querySelectorAll(’.seg-btn’).forEach(btn => btn.addEventListener(‘click’, () => {
-document.querySelectorAll(’.seg-btn’).forEach(b => b.classList.remove(‘active’));
-btn.classList.add(‘active’);
-currentRange = Number(btn.dataset.range);
-renderGlucose();
-}));
-document.querySelectorAll(’.type-btn’).forEach(btn => btn.addEventListener(‘click’, () => {
-document.querySelectorAll(’.type-btn’).forEach(b => b.classList.remove(‘active’));
-btn.classList.add(‘active’);
-currentType = btn.dataset.type;
-renderGlucose();
-}));
-
-// ── MISSION ──
-qs(‘missionCompleteBtn’).addEventListener(‘click’, () => {
-state.missionDoneToday = true;
-renderAll();
-});
-qs(‘missionSkipBtn’).addEventListener(‘click’, () => {
-state.missionIndex = (state.missionIndex + 1) % missions.length;
-state.missionDoneToday = false;
-renderAll();
-});
-qs(‘todayMissionBtn’).addEventListener(‘click’, () => renderView(‘home’));
-
-// ── TIMER ──
-function updateTimerDisplay() {
-const mins = String(Math.floor(timerSeconds / 60)).padStart(2, ‘0’);
-const secs = String(timerSeconds % 60).padStart(2, ‘0’);
-qs(‘timerDisplay’).textContent = `${mins}:${secs}`;
-qs(‘timerStage’).textContent = timerStages[timerStageIndex].name;
-qs(‘timerGuide’).textContent = timerStages[timerStageIndex].guide;
+function bindNavigation() {
+  document.querySelectorAll('.nav-btn').forEach(button => {
+    button.addEventListener('click', () => switchView(button.dataset.view));
+  });
+  document.querySelectorAll('[data-jump]').forEach(button => {
+    button.addEventListener('click', () => switchView(button.dataset.jump));
+  });
+  qs('todayShortcutBtn').addEventListener('click', () => {
+    setTodayDefaults();
+    switchView('log');
+  });
 }
-updateTimerDisplay();
-qs(‘timerStartBtn’).addEventListener(‘click’, () => {
-clearInterval(timerInterval);
-timerInterval = setInterval(() => {
-if (timerSeconds > 0) { timerSeconds–; }
-else {
-clearInterval(timerInterval);
-qs(‘timerGuide’).textContent = `${timerStages[timerStageIndex].name} 단계 완료!`;
+
+function bindForms() {
+  qs('glucoseForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    state.glucose.unshift({
+      id: createId(),
+      date: formData.get('date'),
+      time: formData.get('time'),
+      type: formData.get('type'),
+      value: Number(formData.get('value')),
+      food: (formData.get('food') || '').toString().trim(),
+      note: (formData.get('note') || '').toString().trim()
+    });
+    event.currentTarget.reset();
+    setTodayDefaults();
+    renderAll();
+    switchView('log');
+  });
+
+  qs('labForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    state.diagnosis.unshift({
+      id: createId(),
+      date: formData.get('date'),
+      fasting: Number(formData.get('fasting')),
+      insulin: Number(formData.get('insulin')),
+      a1c: Number(formData.get('a1c')),
+      weight: formData.get('weight') ? Number(formData.get('weight')) : '',
+      waist: formData.get('waist') ? Number(formData.get('waist')) : '',
+      note: (formData.get('note') || '').toString().trim()
+    });
+    event.currentTarget.reset();
+    setTodayDefaults();
+    renderAll();
+    switchView('labs');
+  });
 }
-updateTimerDisplay();
-}, 1000);
-});
-qs(‘timerNextBtn’).addEventListener(‘click’, () => {
-timerStageIndex = (timerStageIndex + 1) % timerStages.length;
-timerSeconds = timerStages[timerStageIndex].seconds;
-updateTimerDisplay();
-});
-qs(‘timerResetBtn’).addEventListener(‘click’, () => {
-clearInterval(timerInterval);
-timerStageIndex = 0;
-timerSeconds = timerStages[0].seconds;
-updateTimerDisplay();
-});
 
-// ── GOLDEN ALARM ──
-qs(‘goldenAlarmBtn’).addEventListener(‘click’, () => {
-const value = qs(‘mealEndTime’).value;
-if (!value) { qs(‘goldenAlarmText’).textContent = ‘먼저 식사 종료 시간을 입력해 주세요.’; return; }
-const [hh, mm] = value.split(’:’).map(Number);
-const total = hh * 60 + mm + 30;
-const tH = String(Math.floor((total % (24*60)) / 60)).padStart(2,‘0’);
-const tM = String(total % 60).padStart(2,‘0’);
-qs(‘goldenAlarmStatus’).textContent = ‘계산 완료’;
-qs(‘goldenAlarmText’).textContent = `추천 걷기 시작: ${tH}:${tM} — 최소 15분 가볍게 걷기`;
-});
+function bindChartControls() {
+  document.querySelectorAll('#rangeButtons .seg-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      chartRange = Number(button.dataset.range);
+      renderChart();
+    });
+  });
 
-// ── ROADMAP WEEK ──
-qs(‘weekRange’).addEventListener(‘input’, e => {
-state.week = Number(e.target.value);
-renderRoadmap();
-save();
-});
+  document.querySelectorAll('#typeButtons .seg-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      chartType = button.dataset.type;
+      renderChart();
+    });
+  });
+}
 
-// ── INIT ──
-renderAll();
-renderView(‘home’);
+function bindDeleteActions() {
+  document.body.addEventListener('click', event => {
+    const glucoseId = event.target.getAttribute('data-delete-glucose');
+    const labId = event.target.getAttribute('data-delete-lab');
+
+    if (glucoseId) {
+      state.glucose = state.glucose.filter(item => item.id !== glucoseId);
+      renderAll();
+    }
+
+    if (labId) {
+      state.diagnosis = state.diagnosis.filter(item => item.id !== labId);
+      renderAll();
+    }
+  });
+}
+
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    });
+  }
+}
+
+function init() {
+  setTodayDefaults();
+  bindNavigation();
+  bindForms();
+  bindChartControls();
+  bindDeleteActions();
+  renderAll();
+  switchView(currentView);
+  registerServiceWorker();
+}
+
+init();
