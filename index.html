@@ -6,7 +6,7 @@
   <title>당뇨관리</title>
   <meta name="theme-color" content="#0f172a" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="stylesheet" href="./styles.css?v=center1" />
+  <link rel="stylesheet" href="./styles.css?v=edit1" />
 </head>
 <body>
   <div class="app-shell">
@@ -110,6 +110,7 @@
             <div>
               <h2>혈당 기록</h2>
               <p>복잡한 옵션은 빼고 꼭 필요한 항목만 남겼습니다.</p>
+          <div class="form-status hidden" id="glucoseFormStatus"></div>
             </div>
           </div>
           <form id="glucoseForm" class="form-grid">
@@ -131,13 +132,16 @@
             </label>
             <label class="full-span">
               <span>음식</span>
-              <input name="food" type="text" placeholder="예: 공복-전날먹은음식, 식후-측정전 먹은음식" />
+              <input name="food" type="text" placeholder="예: 현미밥, 냉면" />
             </label>
             <label class="full-span">
               <span>메모</span>
               <input name="note" type="text" placeholder="예: 식후 15분 걷기" />
             </label>
-            <button class="primary-btn full-span" type="submit">혈당 저장</button>
+            <div class="form-actions full-span">
+              <button class="primary-btn" id="glucoseSubmitBtn" type="submit">혈당 저장</button>
+              <button class="secondary-btn" id="glucoseCancelEditBtn" type="button" hidden>수정 취소</button>
+            </div>
           </form>
         </article>
 
@@ -145,7 +149,7 @@
           <div class="card-head">
             <div>
               <h3>최근 기록</h3>
-              <p>잘못 입력한 기록은 바로 삭제할 수 있습니다.</p>
+              <p>잘못 입력한 기록은 수정하거나 바로 삭제할 수 있습니다.</p>
             </div>
           </div>
           <div class="list-stack" id="glucoseList"></div>
@@ -197,6 +201,7 @@
             <div>
               <h2>혈액검사 기록</h2>
               <p>HbA1c와 인슐린 저항성 확인에 필요한 항목만 남겼습니다.</p>
+          <div class="form-status hidden" id="labFormStatus"></div>
             </div>
           </div>
           <form id="labForm" class="form-grid">
@@ -228,7 +233,10 @@
               <span>메모</span>
               <input name="note" type="text" placeholder="예: 정기 건강검진" />
             </label>
-            <button class="primary-btn full-span" type="submit">검사결과 저장</button>
+            <div class="form-actions full-span">
+              <button class="primary-btn" id="labSubmitBtn" type="submit">검사결과 저장</button>
+              <button class="secondary-btn" id="labCancelEditBtn" type="button" hidden>수정 취소</button>
+            </div>
           </form>
         </article>
 
@@ -284,6 +292,6 @@
     </nav>
   </div>
 
-  <script src="./app.js?v=center1"></script>
+  <script src="./app.js?v=edit1"></script>
 </body>
 </html>
