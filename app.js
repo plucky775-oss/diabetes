@@ -1,590 +1,755 @@
-const STORAGE_KEY = 'diabetes-care-v4';
-const LEGACY_KEY = 'diabetes-care-v3';
-const LEGACY_KEY_2 = 'metabolic-reset-v3';
+const STORAGE_KEY = 'diabetes-care-v2';
+const LEGACY_KEYS = ['metabolic-reset-v3'];
+
+const today = new Date();
+const todayDate = toDateInputValue(today);
+const nowTime = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+
+function field(form, name) {
+  return form.elements.namedItem(name);
+}
 
 const defaultState = {
-  diagnosis: [
-    { id: createId(), date: '2026-04-10', fasting: 102, insulin: 11.8, a1c: 5.8, weight: 76.4, waist: 91, note: '초기 기준값' }
+  glucoseRecords: [
+    { id: uid(), date: '2026-04-09', time: '07:10', type: 'fasting', value: 97, food: '', note: '' },
+    { id: uid(), date: '2026-04-10', time: '07:15', type: 'fasting', value: 95, food: '', note: '아침 공복' },
+    { id: uid(), date: '2026-04-09', time: '12:55', type: 'post1', value: 128, food: '현미밥', note: '식후 15분 걷기' },
+    { id: uid(), date: '2026-04-09', time: '13:55', type: 'post2', value: 108, food: '현미밥', note: '' }
   ],
-  glucose: [
-    { id: createId(), date: '2026-04-06', time: '07:20', type: 'fasting', value: 101, food: '', note: '수면 6시간' },
-    { id: createId(), date: '2026-04-07', time: '07:10', type: 'fasting', value: 97, food: '', note: '저녁 탄수 적음' },
-    { id: createId(), date: '2026-04-08', time: '13:10', type: 'post1', value: 144, food: '냉면', note: '걷기 없음' },
-    { id: createId(), date: '2026-04-08', time: '14:10', type: 'post2', value: 116, food: '냉면', note: '' },
-    { id: createId(), date: '2026-04-09', time: '12:55', type: 'post1', value: 128, food: '현미밥', note: '식후 15분 걷기' },
-    { id: createId(), date: '2026-04-09', time: '13:55', type: 'post2', value: 108, food: '현미밥', note: '' },
-    { id: createId(), date: '2026-04-10', time: '07:15', type: 'fasting', value: 95, food: '', note: '아침 공복' }
-  ]
+  labRecords: [
+    { id: uid(), date: '2026-04-11', fasting: 95, insulin: 11.8, a1c: 5.3, note: '최신 검사' }
+  ],
+  graphRange: 7,
+  graphType: 'fasting'
 };
 
 let state = loadState();
-let currentView = 'home';
-let chartRange = 7;
-let chartType = 'fasting';
-const editState = { glucoseId: null, labId: null };
 
-function createId() {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-}
+const els = {
+  views: document.querySelectorAll('.view'),
+  navButtons: document.querySelectorAll('.nav-button'),
+  heroDateText: document.getElementById('heroDateText'),
+  summaryTitle: document.getElementById('summaryTitle'),
+  summaryBadge: document.getElementById('summaryBadge'),
+  summaryCopy: document.getElementById('summaryCopy'),
+  homeFasting: document.getElementById('homeFasting'),
+  homePostMax: document.getElementById('homePostMax'),
+  homeA1c: document.getElementById('homeA1c'),
+  homeHoma: document.getElementById('homeHoma'),
+  homeHomaStatus: document.getElementById('homeHomaStatus'),
+  homeChart: document.getElementById('homeChart'),
+  homeMiniNote: document.getElementById('homeMiniNote'),
+  goToRecordBtn: document.getElementById('goToRecordBtn'),
+  recordForm: document.getElementById('recordForm'),
+  recordFormTitle: document.getElementById('recordFormTitle'),
+  recordSubmitBtn: document.getElementById('recordSubmitBtn'),
+  recordCancelBtn: document.getElementById('recordCancelBtn'),
+  recordList: document.getElementById('recordList'),
+  recordCountPill: document.getElementById('recordCountPill'),
+  graphChart: document.getElementById('graphChart'),
+  graphSummary: document.getElementById('graphSummary'),
+  graphPointList: document.getElementById('graphPointList'),
+  graphCountPill: document.getElementById('graphCountPill'),
+  rangeButtons: document.querySelectorAll('[data-range]'),
+  typeButtons: document.querySelectorAll('[data-type]'),
+  labForm: document.getElementById('labForm'),
+  labFormTitle: document.getElementById('labFormTitle'),
+  labSubmitBtn: document.getElementById('labSubmitBtn'),
+  labCancelBtn: document.getElementById('labCancelBtn'),
+  labLatestDate: document.getElementById('labLatestDate'),
+  labLatestFasting: document.getElementById('labLatestFasting'),
+  labLatestA1c: document.getElementById('labLatestA1c'),
+  labLatestHoma: document.getElementById('labLatestHoma'),
+  labLatestHomaText: document.getElementById('labLatestHomaText'),
+  labInsight: document.getElementById('labInsight'),
+  labList: document.getElementById('labList'),
+  labCountPill: document.getElementById('labCountPill')
+};
 
-function qs(id) {
-  return document.getElementById(id);
-}
+bindEvents();
+setDefaultFormValues();
+renderAll();
+registerServiceWorker();
 
-function sortByDateTimeDesc(items) {
-  return [...items].sort((a, b) => `${b.date}${b.time || ''}`.localeCompare(`${a.date}${a.time || ''}`));
-}
+function bindEvents() {
+  els.navButtons.forEach((button) => {
+    button.addEventListener('click', () => openView(button.dataset.nav));
+  });
 
-function normalizeGlucoseItem(item = {}) {
-  return {
-    id: item.id || createId(),
-    date: item.date || nowParts().date,
-    time: item.time || '',
-    type: item.type || 'fasting',
-    value: Number(item.value || 0),
-    food: (item.food || '').toString(),
-    note: (item.note || '').toString()
-  };
-}
+  document.querySelectorAll('[data-nav]').forEach((button) => {
+    if (!button.classList.contains('nav-button')) {
+      button.addEventListener('click', () => openView(button.dataset.nav));
+    }
+  });
 
-function normalizeDiagnosisItem(item = {}) {
-  return {
-    id: item.id || createId(),
-    date: item.date || nowParts().date,
-    fasting: Number(item.fasting || 0),
-    insulin: Number(item.insulin || 0),
-    a1c: Number(item.a1c || 0),
-    weight: item.weight === '' || item.weight === undefined || item.weight === null ? '' : Number(item.weight),
-    waist: item.waist === '' || item.waist === undefined || item.waist === null ? '' : Number(item.waist),
-    note: (item.note || '').toString()
-  };
+  els.goToRecordBtn.addEventListener('click', () => openView('record'));
+
+  els.recordForm.addEventListener('submit', onSubmitRecord);
+  els.recordCancelBtn.addEventListener('click', resetRecordForm);
+
+  els.labForm.addEventListener('submit', onSubmitLab);
+  els.labCancelBtn.addEventListener('click', resetLabForm);
+
+  els.rangeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      state.graphRange = Number(button.dataset.range);
+      saveState();
+      renderGraph();
+      syncGraphButtons();
+    });
+  });
+
+  els.typeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      state.graphType = button.dataset.type;
+      saveState();
+      renderGraph();
+      syncGraphButtons();
+    });
+  });
 }
 
 function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY) || localStorage.getItem(LEGACY_KEY_2);
-  if (!raw) {
-    return {
-      diagnosis: defaultState.diagnosis.map(normalizeDiagnosisItem),
-      glucose: defaultState.glucose.map(normalizeGlucoseItem)
-    };
+  const current = localStorage.getItem(STORAGE_KEY);
+  if (current) {
+    try {
+      return normalizeState(JSON.parse(current));
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  try {
-    const parsed = JSON.parse(raw);
-    const glucose = Array.isArray(parsed.glucose) ? parsed.glucose.map(normalizeGlucoseItem).filter(item => item.date && item.value) : [];
-    const diagnosis = Array.isArray(parsed.diagnosis) ? parsed.diagnosis.map(normalizeDiagnosisItem).filter(item => item.date && item.fasting && item.insulin && item.a1c) : [];
-    return {
-      diagnosis: diagnosis.length ? diagnosis : defaultState.diagnosis.map(normalizeDiagnosisItem),
-      glucose: glucose.length ? glucose : defaultState.glucose.map(normalizeGlucoseItem)
-    };
-  } catch (error) {
-    return {
-      diagnosis: defaultState.diagnosis.map(normalizeDiagnosisItem),
-      glucose: defaultState.glucose.map(normalizeGlucoseItem)
-    };
+  for (const key of LEGACY_KEYS) {
+    const legacy = localStorage.getItem(key);
+    if (!legacy) continue;
+    try {
+      const parsed = JSON.parse(legacy);
+      const migrated = {
+        ...defaultState,
+        glucoseRecords: Array.isArray(parsed.glucose)
+          ? parsed.glucose.map((item) => ({
+              id: item.id || uid(),
+              date: item.date || todayDate,
+              time: item.time || '07:00',
+              type: item.type || 'fasting',
+              value: Number(item.value || 0),
+              food: item.food || '',
+              note: item.note || ''
+            }))
+          : defaultState.glucoseRecords,
+        labRecords: Array.isArray(parsed.diagnosis)
+          ? parsed.diagnosis.map((item) => ({
+              id: item.id || uid(),
+              date: item.date || todayDate,
+              fasting: Number(item.fasting || 0),
+              insulin: Number(item.insulin || 0),
+              a1c: Number(item.a1c || 0),
+              note: item.note || ''
+            }))
+          : defaultState.labRecords,
+        graphRange: 7,
+        graphType: 'fasting'
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      return normalizeState(migrated);
+    } catch (error) {
+      console.error(error);
+    }
   }
+
+  return structuredClone(defaultState);
+}
+
+function normalizeState(raw) {
+  return {
+    glucoseRecords: Array.isArray(raw.glucoseRecords) ? raw.glucoseRecords.map((item) => ({
+      id: item.id || uid(),
+      date: item.date || todayDate,
+      time: item.time || '07:00',
+      type: item.type || 'fasting',
+      value: Number(item.value || 0),
+      food: item.food || '',
+      note: item.note || ''
+    })) : structuredClone(defaultState.glucoseRecords),
+    labRecords: Array.isArray(raw.labRecords) ? raw.labRecords.map((item) => ({
+      id: item.id || uid(),
+      date: item.date || todayDate,
+      fasting: Number(item.fasting || 0),
+      insulin: Number(item.insulin || 0),
+      a1c: Number(item.a1c || 0),
+      note: item.note || ''
+    })) : structuredClone(defaultState.labRecords),
+    graphRange: Number(raw.graphRange) || 7,
+    graphType: raw.graphType || 'fasting'
+  };
 }
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function nowParts() {
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10);
-  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  return { date, time };
+function setDefaultFormValues() {
+  if (!field(els.recordForm, 'date').value) field(els.recordForm, 'date').value = todayDate;
+  if (!field(els.recordForm, 'time').value) field(els.recordForm, 'time').value = nowTime;
+  if (!field(els.labForm, 'date').value) field(els.labForm, 'date').value = todayDate;
 }
 
-function average(values) {
-  return values.length ? values.reduce((sum, value) => sum + Number(value), 0) / values.length : 0;
-}
-
-function recentDaysFilter(items, days) {
-  const cutoff = new Date();
-  cutoff.setHours(0, 0, 0, 0);
-  cutoff.setDate(cutoff.getDate() - (days - 1));
-  return items.filter(item => new Date(item.date) >= cutoff);
-}
-
-function glucoseTypeLabel(type) {
-  return ({ fasting: '공복', post1: '식후 1시간', post2: '식후 2시간' })[type] || type;
-}
-
-function classifyGlucose(value, type) {
-  const num = Number(value);
-  if (type === 'fasting') {
-    if (num < 100) return { text: '양호', level: 'good' };
-    if (num <= 125) return { text: '주의', level: 'warn' };
-    return { text: '높음', level: 'danger' };
-  }
-  const target = type === 'post1' ? 140 : 120;
-  if (num <= target) return { text: '양호', level: 'good' };
-  if (num <= target + 20) return { text: '주의', level: 'warn' };
-  return { text: '높음', level: 'danger' };
-}
-
-function classifyLab(fasting, a1c) {
-  const fastingNum = Number(fasting);
-  const a1cNum = Number(a1c);
-  if (fastingNum >= 126 || a1cNum >= 6.5) return { text: '집중관리', level: 'danger' };
-  if (fastingNum >= 100 || a1cNum >= 5.7) return { text: '주의관리', level: 'warn' };
-  return { text: '안정적', level: 'good' };
-}
-
-function classifyHomaIr(homa) {
-  const value = Number(homa);
-  if (!value) return { text: '판정 전', level: '' };
-  if (value < 2.2) return { text: '양호', level: 'good', detail: '인슐린저항성이 비교적 낮은 편' };
-  if (value < 3.2) return { text: '주의', level: 'warn', detail: '경계 범위로 볼 수 있음' };
-  return { text: '높음', level: 'danger', detail: '인슐린저항성 가능성이 높은 편' };
-}
-
-function calculateHoma(fasting, insulin) {
-  if (!fasting || !insulin) return 0;
-  return (Number(fasting) * Number(insulin)) / 405;
-}
-
-function latestGlucose(type) {
-  return sortByDateTimeDesc(state.glucose.filter(item => item.type === type))[0] || null;
-}
-
-function latestLab() {
-  return sortByDateTimeDesc(state.diagnosis)[0] || null;
-}
-
-function formatValue(value, suffix = '') {
-  if (value === undefined || value === null || value === '') return '—';
-  return `${value}${suffix}`;
-}
-
-function setTodayDefaults() {
-  const { date } = nowParts();
-  if (qs('glucoseDate') && !editState.glucoseId) qs('glucoseDate').value = date;
-  if (qs('labDate') && !editState.labId) qs('labDate').value = date;
-  qs('todayText').textContent = `${date} 기준으로 오늘 기록을 관리할 수 있어요.`;
-}
-
-function switchView(view) {
-  currentView = view;
-  document.querySelectorAll('.view').forEach(section => {
-    section.classList.toggle('active', section.id === `view-${view}`);
-  });
-  document.querySelectorAll('.nav-btn').forEach(button => {
-    button.classList.toggle('active', button.dataset.view === view);
-  });
-}
-
-function renderHome() {
-  const latestFasting = latestGlucose('fasting');
-  const latestPost1 = latestGlucose('post1');
-  const latestPost2 = latestGlucose('post2');
-  const lab = latestLab();
-
-  const latestPostValues = [latestPost1?.value, latestPost2?.value].filter(Boolean).map(Number);
-  const latestPostPeak = latestPostValues.length ? Math.max(...latestPostValues) : null;
-  const statusBase = lab ? classifyLab(lab.fasting, lab.a1c) : (latestFasting ? classifyGlucose(latestFasting.value, 'fasting') : { text: '준비중', level: '' });
-
-  qs('statusTitle').textContent = statusBase.level === 'good' ? '지금 흐름은 비교적 안정적입니다' : statusBase.level === 'warn' ? '조금만 더 관리하면 더 좋아질 수 있습니다' : statusBase.level === 'danger' ? '기록을 보며 집중 관리가 필요합니다' : '기록을 시작해 주세요';
-  qs('statusChip').textContent = statusBase.text;
-  qs('statusChip').className = `status-chip ${statusBase.level || ''}`.trim();
-
-  const messageParts = [];
-  if (latestFasting) messageParts.push(`최근 공복은 ${latestFasting.value}mg/dL입니다.`);
-  if (latestPostPeak) messageParts.push(`최근 식후 최고는 ${latestPostPeak}mg/dL입니다.`);
-  if (lab?.a1c) messageParts.push(`최신 HbA1c는 ${lab.a1c}%입니다.`);
-  if (lab) {
-    const homa = calculateHoma(lab.fasting, lab.insulin);
-    const homaStatus = classifyHomaIr(homa);
-    messageParts.push(`HOMA-IR는 ${homa.toFixed(2)}로 ${homaStatus.text} 수준입니다.`);
-  }
-  qs('statusMessage').textContent = messageParts.length ? messageParts.join(' ') : '공복혈당, 식후혈당, HbA1c를 기록하면 한눈에 보기 쉽게 정리됩니다.';
-
-  qs('homeFasting').textContent = latestFasting ? `${latestFasting.value}` : '—';
-  qs('homePostPeak').textContent = latestPostPeak ? `${latestPostPeak}` : '—';
-  qs('homeA1c').textContent = lab?.a1c ? `${lab.a1c}%` : '—';
-  qs('homeHoma').textContent = lab ? calculateHoma(lab.fasting, lab.insulin).toFixed(2) : '—';
-
-  const fasting7 = recentDaysFilter(state.glucose.filter(item => item.type === 'fasting'), 7);
-  const post7 = recentDaysFilter(state.glucose.filter(item => item.type !== 'fasting'), 7);
-  const fastingAvg = average(fasting7.map(item => item.value));
-  const postAvg = average(post7.map(item => item.value));
-
-  qs('avgFasting7').textContent = fastingAvg ? `${fastingAvg.toFixed(1)}` : '—';
-  qs('avgPost7').textContent = postAvg ? `${postAvg.toFixed(1)}` : '—';
-  qs('fastingTrend').textContent = fasting7.length >= 2 ? trendText(fasting7.map(item => item.value), 'fasting') : '기록이 더 필요합니다';
-  qs('postTrend').textContent = post7.length >= 2 ? trendText(post7.map(item => item.value), 'post') : '기록이 더 필요합니다';
-
-  const recentGlucose = sortByDateTimeDesc(state.glucose).slice(0, 3);
-  qs('homeRecentGlucoseList').innerHTML = recentGlucose.length ? recentGlucose.map(item => renderGlucoseItem(item, false)).join('') : emptyState('아직 혈당 기록이 없습니다.');
-
-  const recentLabs = sortByDateTimeDesc(state.diagnosis).slice(0, 2);
-  qs('homeRecentLabList').innerHTML = recentLabs.length ? recentLabs.map(item => renderLabItem(item, false)).join('') : emptyState('아직 혈액검사 기록이 없습니다.');
-}
-
-function trendText(values, kind) {
-  if (values.length < 2) return '기록이 더 필요합니다';
-  const sorted = values.map(Number);
-  const delta = sorted[sorted.length - 1] - sorted[0];
-  if (Math.abs(delta) < 3) return '큰 변화 없이 유지 중';
-  if (delta < 0) return kind === 'fasting' ? '최근 공복이 내려가는 흐름' : '최근 식후 반응이 완만해지는 흐름';
-  return kind === 'fasting' ? '최근 공복이 올라가는 흐름' : '최근 식후 반응이 높아지는 흐름';
-}
-
-function emptyState(text) {
-  return `<div class="empty-state">${text}</div>`;
-}
-
-function renderGlucoseItem(item, withActions = true) {
-  const status = classifyGlucose(item.value, item.type);
-  const detailText = [item.food, item.note].filter(Boolean).join(' · ');
-  return `
-    <div class="list-item">
-      <div class="list-main">
-        <div class="list-title">
-          <span class="list-tag">${glucoseTypeLabel(item.type)}</span>
-          <strong>${item.value} mg/dL</strong>
-          <span class="list-meta">${item.date}</span>
-        </div>
-        <p>${detailText || '추가 메모 없음'}</p>
-      </div>
-      ${withActions
-        ? `<div class="list-actions"><button class="edit-btn" type="button" data-edit-glucose="${item.id}">수정</button><button class="delete-btn" type="button" data-delete-glucose="${item.id}">삭제</button></div>`
-        : `<span class="list-tag ${status.level}">${status.text}</span>`}
-    </div>
-  `;
-}
-
-function renderLog() {
-  const items = sortByDateTimeDesc(state.glucose);
-  qs('glucoseList').innerHTML = items.length ? items.map(item => renderGlucoseItem(item, true)).join('') : emptyState('아직 저장된 혈당 기록이 없습니다.');
-}
-
-function renderChart() {
-  const target = chartType === 'fasting' ? 100 : chartType === 'post1' ? 140 : 120;
-  const source = sortByDateTimeDesc(recentDaysFilter(state.glucose.filter(item => item.type === chartType), chartRange)).reverse();
-  const svg = qs('glucoseChart');
-
-  document.querySelectorAll('#rangeButtons .seg-btn').forEach(button => {
-    button.classList.toggle('active', Number(button.dataset.range) === chartRange);
-  });
-  document.querySelectorAll('#typeButtons .seg-btn').forEach(button => {
-    button.classList.toggle('active', button.dataset.type === chartType);
-  });
-
-  if (!source.length) {
-    svg.innerHTML = `<rect x="0" y="0" width="360" height="220" rx="16" fill="#f4f8fe"></rect><text x="180" y="110" text-anchor="middle" fill="#7890a8" font-size="14">기록이 없습니다</text>`;
-    qs('chartAvg').textContent = '—';
-    qs('chartMax').textContent = '—';
-    qs('chartMin').textContent = '—';
-    qs('chartNote').textContent = '선택한 기간에 데이터가 없습니다.';
-    return;
-  }
-
-  const values = source.map(item => Number(item.value));
-  const minValue = Math.max(60, Math.min(...values, target) - 10);
-  const maxValue = Math.max(...values, target) + 10;
-  const w = 360;
-  const h = 220;
-  const px = 26;
-  const py = 24;
-  const graphW = w - px * 2;
-  const graphH = h - py * 2;
-  const stepX = source.length === 1 ? 0 : graphW / (source.length - 1);
-  const toY = value => h - py - ((value - minValue) / (maxValue - minValue || 1)) * graphH;
-  const points = source.map((item, index) => ({
-    x: px + stepX * index,
-    y: toY(Number(item.value)),
-    item
-  }));
-  const pathPoints = points.map(point => `${point.x},${point.y}`).join(' ');
-  const areaPoints = `${px},${h - py} ${points.map(point => `${point.x},${point.y}`).join(' ')} ${points[points.length - 1].x},${h - py}`;
-  const targetY = toY(target);
-  const dots = points.map(point => {
-    const stateClass = classifyGlucose(point.item.value, chartType);
-    const fill = stateClass.level === 'good' ? '#0f9f67' : stateClass.level === 'warn' ? '#c87a00' : '#cb3a43';
-    return `<circle cx="${point.x}" cy="${point.y}" r="5" fill="${fill}"></circle>`;
-  }).join('');
-  const labels = points.map(point => `<text x="${point.x}" y="204" text-anchor="middle" fill="#7890a8" font-size="10">${point.item.date.slice(5)}</text>`).join('');
-
-  svg.innerHTML = `
-    <defs>
-      <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#1769e0" stop-opacity="0.28"></stop>
-        <stop offset="100%" stop-color="#1769e0" stop-opacity="0"></stop>
-      </linearGradient>
-    </defs>
-    <rect x="0" y="0" width="360" height="220" rx="18" fill="#f4f8fe"></rect>
-    <line x1="${px}" y1="${targetY}" x2="${w - px}" y2="${targetY}" stroke="#c87a00" stroke-dasharray="5 5" stroke-opacity="0.7"></line>
-    <polygon points="${areaPoints}" fill="url(#areaFill)"></polygon>
-    <polyline points="${pathPoints}" fill="none" stroke="#1769e0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
-    ${dots}
-    ${labels}
-    <text x="${w - px}" y="${targetY - 8}" text-anchor="end" fill="#c87a00" font-size="11">기준 ${target}</text>
-  `;
-
-  qs('chartAvg').textContent = `${average(values).toFixed(1)}`;
-  qs('chartMax').textContent = `${Math.max(...values)}`;
-  qs('chartMin').textContent = `${Math.min(...values)}`;
-  qs('chartNote').textContent = `${glucoseTypeLabel(chartType)} ${chartRange}일 기준으로 ${source.length}개 기록을 반영했습니다.`;
-}
-
-function renderLabItem(item, withActions = true) {
-  const homa = calculateHoma(item.fasting, item.insulin);
-  const homaStatus = classifyHomaIr(homa);
-  const status = classifyLab(item.fasting, item.a1c);
-  const detail = [`공복 ${item.fasting}`, `인슐린 ${item.insulin}`, `HbA1c ${item.a1c}%`].join(' · ');
-  return `
-    <div class="list-item">
-      <div class="list-main">
-        <div class="list-title list-title-wrap">
-          <strong>${item.date}</strong>
-          <div class="tag-row">
-            <span class="list-tag">${status.text}</span>
-            <span class="list-tag ${homaStatus.level || ''}">IR ${homaStatus.text}</span>
-          </div>
-        </div>
-        <p>${detail} · HOMA-IR ${homa.toFixed(2)} (${homaStatus.text})${item.note ? ` · ${item.note}` : ''}</p>
-      </div>
-      ${withActions
-        ? `<div class="list-actions"><button class="edit-btn" type="button" data-edit-lab="${item.id}">수정</button><button class="delete-btn" type="button" data-delete-lab="${item.id}">삭제</button></div>`
-        : `<span class="list-tag ${homaStatus.level || ''}">${homa.toFixed(2)} · ${homaStatus.text}</span>`}
-    </div>
-  `;
-}
-
-function renderLabs() {
-  const latest = latestLab();
-  if (!latest) {
-    qs('labHoma').textContent = '—';
-    qs('labFasting').textContent = '—';
-    qs('labA1c').textContent = '—';
-    qs('labIrLevel').textContent = '—';
-    qs('labInsight').textContent = '검사결과를 입력하면 해석이 표시됩니다.';
-  } else {
-    const homa = calculateHoma(latest.fasting, latest.insulin);
-    const homaStatus = classifyHomaIr(homa);
-    const status = classifyLab(latest.fasting, latest.a1c);
-    qs('labHoma').textContent = homa.toFixed(2);
-    qs('labFasting').textContent = `${latest.fasting}`;
-    qs('labA1c').textContent = `${latest.a1c}%`;
-    qs('labIrLevel').textContent = homaStatus.text;
-    qs('labInsight').textContent = status.level === 'good'
-      ? `최신 HOMA-IR는 ${homa.toFixed(2)}이고 인슐린저항성 수준은 ${homaStatus.text}입니다. 현재 루틴을 유지하면서 공복과 식후 흐름을 같이 보시면 좋습니다.`
-      : status.level === 'warn'
-        ? `최신 HOMA-IR는 ${homa.toFixed(2)}이고 인슐린저항성 수준은 ${homaStatus.text}입니다. 공복혈당과 식후혈당 기록을 함께 보면서 변화를 확인해 보세요.`
-        : `최신 HOMA-IR는 ${homa.toFixed(2)}이고 인슐린저항성 수준은 ${homaStatus.text}입니다. 검사 수치 추세를 꾸준히 확인하고 필요 시 의료진과 상담하는 것이 좋습니다.`;
-  }
-
-  const items = sortByDateTimeDesc(state.diagnosis);
-  qs('labList').innerHTML = items.length ? items.map(item => renderLabItem(item, true)).join('') : emptyState('아직 혈액검사 기록이 없습니다.');
-}
-
-
-function setGlucoseFormMode() {
-  const isEdit = Boolean(editState.glucoseId);
-  qs('glucoseSubmitBtn').textContent = isEdit ? '혈당 기록 수정' : '혈당 저장';
-  qs('glucoseCancelEditBtn').hidden = !isEdit;
-  qs('glucoseFormStatus').classList.toggle('hidden', !isEdit);
-  qs('glucoseFormStatus').textContent = isEdit ? '혈당 기록 수정 중입니다. 수정 후 저장을 누르세요.' : '';
-}
-
-function setLabFormMode() {
-  const isEdit = Boolean(editState.labId);
-  qs('labSubmitBtn').textContent = isEdit ? '검사기록 수정' : '검사결과 저장';
-  qs('labCancelEditBtn').hidden = !isEdit;
-  qs('labFormStatus').classList.toggle('hidden', !isEdit);
-  qs('labFormStatus').textContent = isEdit ? '혈액검사 기록 수정 중입니다. 수정 후 저장을 누르세요.' : '';
-}
-
-function resetGlucoseForm() {
-  editState.glucoseId = null;
-  qs('glucoseForm').reset();
-  setTodayDefaults();
-  setGlucoseFormMode();
-}
-
-function resetLabForm() {
-  editState.labId = null;
-  qs('labForm').reset();
-  setTodayDefaults();
-  setLabFormMode();
-}
-
-function startEditGlucose(id) {
-  const item = state.glucose.find(entry => entry.id === id);
-  if (!item) return;
-  editState.glucoseId = id;
-  const form = qs('glucoseForm');
-  form.elements.date.value = item.date || '';
-  form.elements.type.value = item.type || 'fasting';
-  form.elements.value.value = item.value ?? '';
-  form.elements.food.value = item.food || '';
-  form.elements.note.value = item.note || '';
-  setGlucoseFormMode();
-  switchView('log');
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function startEditLab(id) {
-  const item = state.diagnosis.find(entry => entry.id === id);
-  if (!item) return;
-  editState.labId = id;
-  const form = qs('labForm');
-  form.elements.date.value = item.date || '';
-  form.elements.fasting.value = item.fasting ?? '';
-  form.elements.insulin.value = item.insulin ?? '';
-  form.elements.a1c.value = item.a1c ?? '';
-  form.elements.weight.value = item.weight ?? '';
-  form.elements.waist.value = item.waist ?? '';
-  form.elements.note.value = item.note || '';
-  setLabFormMode();
-  switchView('labs');
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function openView(viewName) {
+  els.views.forEach((view) => view.classList.toggle('active', view.id === `view-${viewName}`));
+  els.navButtons.forEach((button) => button.classList.toggle('active', button.dataset.nav === viewName));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function renderAll() {
   renderHome();
-  renderLog();
-  renderChart();
-  renderLabs();
-  setGlucoseFormMode();
-  setLabFormMode();
+  renderRecordList();
+  renderGraph();
+  renderLab();
+  syncGraphButtons();
+  setDefaultFormValues();
+}
+
+function renderHome() {
+  els.heroDateText.textContent = `${todayDate} 기준으로 오늘 기록을 관리할 수 있어요.`;
+
+  const latestFasting = getLatestGlucoseByType('fasting');
+  const recentPostMax = getRecentPostMax(30);
+  const latestLab = getLatestLab();
+  const homa = latestLab ? calculateHoma(latestLab.fasting, latestLab.insulin) : null;
+
+  els.homeFasting.textContent = latestFasting ? formatNumber(latestFasting.value) : '—';
+  els.homePostMax.textContent = recentPostMax ? formatNumber(recentPostMax.value) : '—';
+  els.homeA1c.textContent = latestLab ? formatFixed(latestLab.a1c, 1) : '—';
+  els.homeHoma.textContent = homa !== null ? formatFixed(homa, 2) : '—';
+  els.homeHomaStatus.textContent = homa !== null ? `${classifyHoma(homa).label} 수준` : '인슐린저항성 지표';
+
+  const summary = makeSummary(latestFasting?.value, recentPostMax?.value, latestLab?.a1c, homa);
+  els.summaryTitle.textContent = summary.title;
+  els.summaryCopy.textContent = summary.body;
+  els.summaryBadge.textContent = summary.badge;
+  els.summaryBadge.className = `status-badge ${summary.badgeClass}`;
+
+  renderMiniChart();
+}
+
+function makeSummary(fastingValue, postMaxValue, a1cValue, homaValue) {
+  const fastingStatus = fastingValue != null ? classifyFasting(fastingValue) : null;
+  const postStatus = postMaxValue != null ? classifyPost(postMaxValue) : null;
+  const a1cStatus = a1cValue != null ? classifyA1c(a1cValue) : null;
+  const homaStatus = homaValue != null ? classifyHoma(homaValue) : null;
+
+  const statuses = [fastingStatus, postStatus, a1cStatus, homaStatus].filter(Boolean);
+  const worst = statuses.reduce((max, item) => Math.max(max, item.level), 0);
+
+  let title = '기록을 더 입력하면 정확한 흐름을 보여드릴게요';
+  let badge = '데이터 확인';
+  let badgeClass = 'status-caution';
+
+  if (!statuses.length) {
+    return {
+      title,
+      badge,
+      badgeClass,
+      body: '아직 충분한 기록이 없습니다. 공복혈당과 검사를 입력하면 홈 요약이 자동으로 업데이트됩니다.'
+    };
+  }
+
+  if (worst === 0) {
+    title = '지금 흐름은 비교적 안정적입니다';
+    badge = '안정적';
+    badgeClass = 'status-stable';
+  } else if (worst === 1) {
+    title = homaStatus && homaStatus.level === 1 && [fastingStatus, postStatus, a1cStatus].every((item) => !item || item.level === 0)
+      ? '혈당은 안정적이지만 인슐린저항성 관리가 필요합니다'
+      : '지금 흐름은 관리가 필요한 구간입니다';
+    badge = '주의 필요';
+    badgeClass = 'status-caution';
+  } else {
+    title = '지금 수치는 빠른 점검이 필요합니다';
+    badge = '점검 필요';
+    badgeClass = 'status-high';
+  }
+
+  const parts = [];
+  if (fastingValue != null) parts.push(`최근 공복은 ${formatNumber(fastingValue)}mg/dL입니다.`);
+  if (postMaxValue != null) parts.push(`최근 식후 최고는 ${formatNumber(postMaxValue)}mg/dL입니다.`);
+  if (a1cValue != null) parts.push(`최신 HbA1c는 ${formatFixed(a1cValue, 1)}%입니다.`);
+  if (homaValue != null) parts.push(`HOMA-IR는 ${formatFixed(homaValue, 2)}로 ${classifyHoma(homaValue).label} 수준입니다.`);
+
+  return { title, badge, badgeClass, body: parts.join(' ') };
+}
+
+function renderMiniChart() {
+  const source = getSortedGlucose().filter((item) => item.type === 'fasting').slice(0, 7).reverse();
+  if (!source.length) {
+    els.homeChart.innerHTML = emptySvg('공복 기록이 없습니다');
+    els.homeMiniNote.textContent = '최근 공복혈당 기록이 아직 없습니다.';
+    return;
+  }
+
+  els.homeChart.innerHTML = buildChartSvg(source, {
+    width: 360,
+    height: 170,
+    target: 100,
+    valueAccessor: (item) => item.value,
+    topLabel: '최근 공복혈당 7회',
+    bottomLabels: source.map((item) => shortDate(item.date))
+  });
+
+  const avgValue = average(source.map((item) => item.value));
+  els.homeMiniNote.textContent = `최근 공복 평균은 ${formatFixed(avgValue, 1)}mg/dL입니다.`;
+}
+
+function onSubmitRecord(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const record = {
+    id: formData.get('id') || uid(),
+    date: formData.get('date') || todayDate,
+    time: formData.get('time') || nowTime,
+    type: formData.get('type') || 'fasting',
+    value: Number(formData.get('value')),
+    food: String(formData.get('food') || '').trim(),
+    note: String(formData.get('note') || '').trim()
+  };
+
+  const existingIndex = state.glucoseRecords.findIndex((item) => item.id === record.id);
+  if (existingIndex >= 0) {
+    state.glucoseRecords[existingIndex] = record;
+  } else {
+    state.glucoseRecords.push(record);
+  }
+
   saveState();
+  resetRecordForm();
+  renderAll();
+  openView('record');
 }
 
-function bindNavigation() {
-  document.querySelectorAll('.nav-btn').forEach(button => {
-    button.addEventListener('click', () => switchView(button.dataset.view));
+function resetRecordForm() {
+  els.recordForm.reset();
+  field(els.recordForm, 'id').value = '';
+  field(els.recordForm, 'date').value = todayDate;
+  field(els.recordForm, 'time').value = nowTime;
+  field(els.recordForm, 'type').value = 'fasting';
+  els.recordFormTitle.textContent = '혈당 입력';
+  els.recordSubmitBtn.textContent = '혈당 저장';
+  els.recordCancelBtn.classList.add('hidden');
+}
+
+function renderRecordList() {
+  const items = getSortedGlucose();
+  els.recordCountPill.textContent = `${items.length}건`;
+
+  if (!items.length) {
+    els.recordList.innerHTML = '<div class="empty-state">아직 저장된 혈당 기록이 없습니다.</div>';
+    return;
+  }
+
+  els.recordList.innerHTML = items.map((item) => {
+    return `
+      <article class="list-item">
+        <div class="list-top">
+          <div>
+            <div class="list-title">${typeLabel(item.type)} · ${formatNumber(item.value)}mg/dL</div>
+            <div class="list-meta">${item.date} · ${item.time}</div>
+          </div>
+          <div class="row-actions">
+            <button class="line-button" type="button" onclick="editRecord('${item.id}')">수정</button>
+            <button class="ghost-button" type="button" onclick="deleteRecord('${item.id}')">삭제</button>
+          </div>
+        </div>
+        <div class="list-sub">${item.food ? `음식: ${escapeHtml(item.food)}` : '음식 기록 없음'}</div>
+        ${item.note ? `<div class="list-note">${escapeHtml(item.note)}</div>` : ''}
+      </article>
+    `;
+  }).join('');
+}
+
+function editRecord(id) {
+  const record = state.glucoseRecords.find((item) => item.id === id);
+  if (!record) return;
+  openView('record');
+  field(els.recordForm, 'id').value = record.id;
+  field(els.recordForm, 'date').value = record.date;
+  field(els.recordForm, 'time').value = record.time;
+  field(els.recordForm, 'type').value = record.type;
+  field(els.recordForm, 'value').value = record.value;
+  field(els.recordForm, 'food').value = record.food;
+  field(els.recordForm, 'note').value = record.note;
+  els.recordFormTitle.textContent = '혈당 수정';
+  els.recordSubmitBtn.textContent = '혈당 수정 저장';
+  els.recordCancelBtn.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteRecord(id) {
+  state.glucoseRecords = state.glucoseRecords.filter((item) => item.id !== id);
+  saveState();
+  renderAll();
+}
+
+window.editRecord = editRecord;
+window.deleteRecord = deleteRecord;
+
+function renderGraph() {
+  const rangeDays = state.graphRange;
+  const targetType = state.graphType;
+  const source = getFilteredGraphData(targetType, rangeDays);
+  const target = targetType === 'fasting' ? 100 : targetType === 'post1' ? 140 : 120;
+
+  if (!source.length) {
+    els.graphChart.innerHTML = emptySvg('그래프 데이터가 없습니다');
+    els.graphSummary.textContent = '해당 기간에 표시할 기록이 없습니다.';
+    els.graphPointList.innerHTML = '<div class="empty-state">표시할 포인트가 없습니다.</div>';
+    els.graphCountPill.textContent = '0개';
+    return;
+  }
+
+  els.graphChart.innerHTML = buildChartSvg(source, {
+    width: 360,
+    height: 220,
+    target,
+    valueAccessor: (item) => item.value,
+    topLabel: `${typeLabel(targetType)} · ${rangeLabel(rangeDays)}`,
+    bottomLabels: source.map((item) => shortDate(item.date))
   });
-  document.querySelectorAll('[data-jump]').forEach(button => {
-    button.addEventListener('click', () => switchView(button.dataset.jump));
+
+  const values = source.map((item) => item.value);
+  const averageValue = average(values);
+  const latest = source[source.length - 1];
+  const highest = Math.max(...values);
+  els.graphSummary.textContent = `평균 ${formatFixed(averageValue, 1)}mg/dL · 최근 ${formatNumber(latest.value)}mg/dL · 최고 ${formatNumber(highest)}mg/dL`;
+  els.graphCountPill.textContent = `${source.length}개`;
+
+  els.graphPointList.innerHTML = source.slice().reverse().map((item) => `
+    <article class="list-item">
+      <div class="list-top">
+        <div>
+          <div class="list-title">${formatNumber(item.value)}mg/dL</div>
+          <div class="list-meta">${item.date} · ${item.time}</div>
+        </div>
+        <span class="inline-pill">${typeLabel(item.type)}</span>
+      </div>
+      ${item.food ? `<div class="list-sub">음식: ${escapeHtml(item.food)}</div>` : ''}
+      ${item.note ? `<div class="list-note">${escapeHtml(item.note)}</div>` : ''}
+    </article>
+  `).join('');
+}
+
+function syncGraphButtons() {
+  els.rangeButtons.forEach((button) => {
+    button.classList.toggle('active', Number(button.dataset.range) === Number(state.graphRange));
   });
-  qs('todayShortcutBtn').addEventListener('click', () => {
-    setTodayDefaults();
-    switchView('log');
+  els.typeButtons.forEach((button) => {
+    button.classList.toggle('active', button.dataset.type === state.graphType);
   });
 }
 
-function bindForms() {
-  qs('glucoseForm').addEventListener('submit', event => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const payload = normalizeGlucoseItem({
-      id: editState.glucoseId || createId(),
-      date: formData.get('date'),
-      type: formData.get('type'),
-      value: Number(formData.get('value')),
-      food: (formData.get('food') || '').toString().trim(),
-      note: (formData.get('note') || '').toString().trim()
-    });
+function onSubmitLab(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const lab = {
+    id: formData.get('id') || uid(),
+    date: formData.get('date') || todayDate,
+    fasting: Number(formData.get('fasting')),
+    insulin: Number(formData.get('insulin')),
+    a1c: Number(formData.get('a1c')),
+    note: String(formData.get('note') || '').trim()
+  };
 
-    if (editState.glucoseId) {
-      state.glucose = state.glucose.map(item => item.id === editState.glucoseId ? payload : item);
-    } else {
-      state.glucose.unshift(payload);
-    }
+  const existingIndex = state.labRecords.findIndex((item) => item.id === lab.id);
+  if (existingIndex >= 0) {
+    state.labRecords[existingIndex] = lab;
+  } else {
+    state.labRecords.push(lab);
+  }
 
-    resetGlucoseForm();
-    renderAll();
-    switchView('log');
-  });
+  saveState();
+  resetLabForm();
+  renderAll();
+  openView('lab');
+}
 
-  qs('labForm').addEventListener('submit', event => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const payload = normalizeDiagnosisItem({
-      id: editState.labId || createId(),
-      date: formData.get('date'),
-      fasting: Number(formData.get('fasting')),
-      insulin: Number(formData.get('insulin')),
-      a1c: Number(formData.get('a1c')),
-      weight: formData.get('weight') ? Number(formData.get('weight')) : '',
-      waist: formData.get('waist') ? Number(formData.get('waist')) : '',
-      note: (formData.get('note') || '').toString().trim()
-    });
+function resetLabForm() {
+  els.labForm.reset();
+  field(els.labForm, 'id').value = '';
+  field(els.labForm, 'date').value = todayDate;
+  els.labFormTitle.textContent = '검사 입력';
+  els.labSubmitBtn.textContent = '검사 저장';
+  els.labCancelBtn.classList.add('hidden');
+}
 
-    if (editState.labId) {
-      state.diagnosis = state.diagnosis.map(item => item.id === editState.labId ? payload : item);
-    } else {
-      state.diagnosis.unshift(payload);
-    }
+function renderLab() {
+  const latest = getLatestLab();
+  const items = getSortedLabs();
+  els.labCountPill.textContent = `${items.length}건`;
 
-    resetLabForm();
-    renderAll();
-    switchView('labs');
-  });
+  if (!latest) {
+    els.labLatestDate.textContent = '—';
+    els.labLatestFasting.textContent = '—';
+    els.labLatestA1c.textContent = '—';
+    els.labLatestHoma.textContent = '—';
+    els.labLatestHomaText.textContent = '상태';
+    els.labInsight.textContent = '검사를 입력하면 자동으로 분석해드려요.';
+    els.labList.innerHTML = '<div class="empty-state">아직 저장된 검사 기록이 없습니다.</div>';
+    return;
+  }
 
-  qs('glucoseCancelEditBtn').addEventListener('click', () => {
-    resetGlucoseForm();
-  });
+  const homa = calculateHoma(latest.fasting, latest.insulin);
+  const homaStatus = classifyHoma(homa);
+  const fastingStatus = classifyFasting(latest.fasting);
+  const a1cStatus = classifyA1c(latest.a1c);
 
-  qs('labCancelEditBtn').addEventListener('click', () => {
-    resetLabForm();
+  els.labLatestDate.textContent = latest.date;
+  els.labLatestFasting.textContent = formatNumber(latest.fasting);
+  els.labLatestA1c.textContent = formatFixed(latest.a1c, 1);
+  els.labLatestHoma.textContent = formatFixed(homa, 2);
+  els.labLatestHomaText.textContent = homaStatus.label;
+
+  els.labInsight.textContent = `공복혈당은 ${fastingStatus.label} 구간, HbA1c는 ${a1cStatus.label} 구간, HOMA-IR는 ${formatFixed(homa, 2)}로 ${homaStatus.label} 수준입니다.`;
+
+  els.labList.innerHTML = items.map((item) => {
+    const itemHoma = calculateHoma(item.fasting, item.insulin);
+    const itemStatus = classifyHoma(itemHoma);
+    return `
+      <article class="list-item">
+        <div class="list-top">
+          <div>
+            <div class="list-title">${item.date}</div>
+            <div class="list-meta">공복 ${formatNumber(item.fasting)}mg/dL · 인슐린 ${formatFixed(item.insulin, 2)} · HbA1c ${formatFixed(item.a1c, 1)}%</div>
+          </div>
+          <div class="row-actions">
+            <button class="line-button" type="button" onclick="editLab('${item.id}')">수정</button>
+            <button class="ghost-button" type="button" onclick="deleteLab('${item.id}')">삭제</button>
+          </div>
+        </div>
+        <div class="list-sub">HOMA-IR ${formatFixed(itemHoma, 2)} · ${itemStatus.label}</div>
+        ${item.note ? `<div class="list-note">${escapeHtml(item.note)}</div>` : ''}
+      </article>
+    `;
+  }).join('');
+}
+
+function editLab(id) {
+  const lab = state.labRecords.find((item) => item.id === id);
+  if (!lab) return;
+  openView('lab');
+  field(els.labForm, 'id').value = lab.id;
+  field(els.labForm, 'date').value = lab.date;
+  field(els.labForm, 'fasting').value = lab.fasting;
+  field(els.labForm, 'insulin').value = lab.insulin;
+  field(els.labForm, 'a1c').value = lab.a1c;
+  field(els.labForm, 'note').value = lab.note;
+  els.labFormTitle.textContent = '검사 수정';
+  els.labSubmitBtn.textContent = '검사 수정 저장';
+  els.labCancelBtn.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteLab(id) {
+  state.labRecords = state.labRecords.filter((item) => item.id !== id);
+  saveState();
+  renderAll();
+}
+
+window.editLab = editLab;
+window.deleteLab = deleteLab;
+
+function getSortedGlucose() {
+  return [...state.glucoseRecords].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+}
+
+function getSortedLabs() {
+  return [...state.labRecords].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function getLatestGlucoseByType(type) {
+  return getSortedGlucose().find((item) => item.type === type) || null;
+}
+
+function getLatestLab() {
+  return getSortedLabs()[0] || null;
+}
+
+function getRecentPostMax(days) {
+  const items = getSortedGlucose().filter((item) => item.type !== 'fasting');
+  const filtered = items.filter((item) => isWithinDays(item.date, days));
+  const target = filtered.length ? filtered : items;
+  if (!target.length) return null;
+  return target.reduce((max, item) => (item.value > max.value ? item : max), target[0]);
+}
+
+function getFilteredGraphData(type, days) {
+  const items = getSortedGlucose()
+    .filter((item) => item.type === type)
+    .filter((item) => isWithinDays(item.date, days))
+    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+
+  if (items.length) return items;
+
+  return getSortedGlucose()
+    .filter((item) => item.type === type)
+    .slice(0, days === 365 ? 24 : days === 30 ? 12 : 7)
+    .reverse();
+}
+
+function buildChartSvg(items, options) {
+  const width = options.width;
+  const height = options.height;
+  const paddingX = 30;
+  const paddingTop = 24;
+  const paddingBottom = 34;
+  const values = items.map((item) => Number(options.valueAccessor(item)));
+  const min = Math.max(60, Math.min(...values) - 12);
+  const max = Math.max(options.target + 20, Math.max(...values) + 12);
+  const innerWidth = width - paddingX * 2;
+  const innerHeight = height - paddingTop - paddingBottom;
+  const stepX = items.length > 1 ? innerWidth / (items.length - 1) : 0;
+  const toY = (value) => paddingTop + innerHeight - ((value - min) / (max - min || 1)) * innerHeight;
+  const points = items.map((item, index) => ({
+    x: paddingX + stepX * index,
+    y: toY(options.valueAccessor(item)),
+    value: options.valueAccessor(item)
+  }));
+  const polyline = points.map((point) => `${point.x},${point.y}`).join(' ');
+  const area = `${paddingX},${height - paddingBottom} ${points.map((point) => `${point.x},${point.y}`).join(' ')} ${paddingX + stepX * (items.length - 1)},${height - paddingBottom}`;
+  const targetY = toY(options.target);
+
+  const gridLines = [0, 0.5, 1].map((ratio) => {
+    const y = paddingTop + innerHeight * ratio;
+    return `<line x1="${paddingX}" y1="${y}" x2="${width - paddingX}" y2="${y}" stroke="#dbe6f6" stroke-width="1" />`;
+  }).join('');
+
+  const labelStep = Math.max(1, Math.ceil(options.bottomLabels.length / 6));
+  const xLabels = options.bottomLabels.map((label, index) => {
+    if (index % labelStep !== 0 && index !== options.bottomLabels.length - 1) return '';
+    const x = paddingX + stepX * index;
+    return `<text x="${x}" y="${height - 10}" text-anchor="middle" fill="#7b8ba5" font-size="11" font-weight="700">${escapeSvg(label)}</text>`;
+  }).join('');
+
+  const dots = points.map((point) => {
+    const severity = point.value > options.target ? '#d69a13' : '#2f6fe5';
+    return `<circle cx="${point.x}" cy="${point.y}" r="4.5" fill="${severity}" />`;
+  }).join('');
+
+  return `
+    <defs>
+      <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#6c9dff" stop-opacity="0.28" />
+        <stop offset="100%" stop-color="#6c9dff" stop-opacity="0" />
+      </linearGradient>
+    </defs>
+    ${gridLines}
+    <line x1="${paddingX}" y1="${targetY}" x2="${width - paddingX}" y2="${targetY}" stroke="#d69a13" stroke-width="1.5" stroke-dasharray="5 5" />
+    <polygon points="${area}" fill="url(#lineFill)" />
+    <polyline points="${polyline}" fill="none" stroke="#2f6fe5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    ${dots}
+    <text x="${paddingX}" y="14" fill="#6a7d98" font-size="12" font-weight="800">${escapeSvg(options.topLabel)}</text>
+    <text x="${width - paddingX}" y="14" text-anchor="end" fill="#d69a13" font-size="12" font-weight="800">기준 ${options.target}</text>
+    ${xLabels}
+  `;
+}
+
+function emptySvg(message) {
+  return `<text x="50%" y="50%" text-anchor="middle" fill="#7b8ba5" font-size="14" font-weight="700">${escapeSvg(message)}</text>`;
+}
+
+function calculateHoma(fasting, insulin) {
+  return (Number(fasting) * Number(insulin)) / 405;
+}
+
+function classifyFasting(value) {
+  if (value >= 126) return { level: 2, label: '점검 필요' };
+  if (value >= 100) return { level: 1, label: '주의' };
+  return { level: 0, label: '안정' };
+}
+
+function classifyPost(value) {
+  if (value > 180) return { level: 2, label: '점검 필요' };
+  if (value > 140) return { level: 1, label: '주의' };
+  return { level: 0, label: '안정' };
+}
+
+function classifyA1c(value) {
+  if (value >= 6.5) return { level: 2, label: '점검 필요' };
+  if (value >= 5.7) return { level: 1, label: '주의' };
+  return { level: 0, label: '안정' };
+}
+
+function classifyHoma(value) {
+  if (value >= 3) return { level: 2, label: '점검 필요' };
+  if (value >= 2.5) return { level: 1, label: '주의' };
+  if (value >= 2) return { level: 1, label: '경계' };
+  return { level: 0, label: '안정' };
+}
+
+function typeLabel(type) {
+  if (type === 'post1') return '식후 1시간';
+  if (type === 'post2') return '식후 2시간';
+  return '공복';
+}
+
+function rangeLabel(days) {
+  if (Number(days) === 7) return '주간';
+  if (Number(days) === 30) return '월간';
+  return '연간';
+}
+
+function toDateInputValue(date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function isWithinDays(dateString, days) {
+  const targetDate = new Date(`${dateString}T00:00:00`);
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - (days - 1));
+  return targetDate >= cutoff;
+}
+
+function average(values) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + Number(value), 0) / values.length;
+}
+
+function shortDate(dateString) {
+  const [year, month, day] = dateString.split('-');
+  return `${Number(month)}/${Number(day)}`;
+}
+
+function formatNumber(value) {
+  return Number(value).toLocaleString('ko-KR', { maximumFractionDigits: 0 });
+}
+
+function formatFixed(value, digits) {
+  return Number(value).toLocaleString('ko-KR', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
   });
 }
 
-function bindChartControls() {
-  document.querySelectorAll('#rangeButtons .seg-btn').forEach(button => {
-    button.addEventListener('click', () => {
-      chartRange = Number(button.dataset.range);
-      renderChart();
-    });
-  });
-
-  document.querySelectorAll('#typeButtons .seg-btn').forEach(button => {
-    button.addEventListener('click', () => {
-      chartType = button.dataset.type;
-      renderChart();
-    });
-  });
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
-function bindDeleteActions() {
-  document.body.addEventListener('click', event => {
-    const glucoseDeleteId = event.target.getAttribute('data-delete-glucose');
-    const labDeleteId = event.target.getAttribute('data-delete-lab');
-    const glucoseEditId = event.target.getAttribute('data-edit-glucose');
-    const labEditId = event.target.getAttribute('data-edit-lab');
+function escapeSvg(value) {
+  return escapeHtml(value);
+}
 
-    if (glucoseEditId) {
-      startEditGlucose(glucoseEditId);
-      return;
-    }
-
-    if (labEditId) {
-      startEditLab(labEditId);
-      return;
-    }
-
-    if (glucoseDeleteId) {
-      state.glucose = state.glucose.filter(item => item.id !== glucoseDeleteId);
-      if (editState.glucoseId === glucoseDeleteId) resetGlucoseForm();
-      renderAll();
-      return;
-    }
-
-    if (labDeleteId) {
-      state.diagnosis = state.diagnosis.filter(item => item.id !== labDeleteId);
-      if (editState.labId === labDeleteId) resetLabForm();
-      renderAll();
-    }
-  });
+function uid() {
+  return `id-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
 }
 
 function registerServiceWorker() {
-  // 캐시 문제를 줄이기 위해 서비스워커를 더 이상 등록하지 않습니다.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    });
+  }
 }
-
-function init() {
-  setTodayDefaults();
-  bindNavigation();
-  bindForms();
-  bindChartControls();
-  bindDeleteActions();
-  renderAll();
-  switchView(currentView);
-  registerServiceWorker();
-}
-
-init();

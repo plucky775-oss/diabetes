@@ -1,9 +1,9 @@
 {
   "name": "당뇨관리",
   "short_name": "당뇨관리",
-  "start_url": "./index.html",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#f5f7fb",
-  "theme_color": "#f5f7fb",
+  "background_color": "#eef4ff",
+  "theme_color": "#eef4ff",
   "icons": []
 }
