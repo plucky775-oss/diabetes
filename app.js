@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'diabetes-care-v1';
+const STORAGE_KEY = 'diabetes-care-v2';
 const LEGACY_KEY = 'metabolic-reset-v3';
 
 const defaultState = {
@@ -120,8 +120,7 @@ function formatValue(value, suffix = '') {
 function setTodayDefaults() {
   const { date, time } = nowParts();
   if (qs('glucoseDate')) qs('glucoseDate').value = date;
-  if (qs('glucoseTime')) qs('glucoseTime').value = time;
-  if (qs('labDate')) qs('labDate').value = date;
+    if (qs('labDate')) qs('labDate').value = date;
   qs('todayText').textContent = `${date} 기준 기록을 관리할 수 있어요.`;
 }
 
@@ -199,7 +198,7 @@ function renderGlucoseItem(item, withDelete = true) {
         <div class="list-title">
           <span class="list-tag">${glucoseTypeLabel(item.type)}</span>
           <strong>${item.value} mg/dL</strong>
-          <span class="list-meta">${item.date} ${item.time || ''}</span>
+          <span class="list-meta">${item.date}</span>
         </div>
         <p>${detailText || '추가 메모 없음'}</p>
       </div>
@@ -352,7 +351,7 @@ function bindForms() {
     state.glucose.unshift({
       id: createId(),
       date: formData.get('date'),
-      time: formData.get('time'),
+      time: '',
       type: formData.get('type'),
       value: Number(formData.get('value')),
       food: (formData.get('food') || '').toString().trim(),
