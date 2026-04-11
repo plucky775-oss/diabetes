@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#eef4ff" />
+  <meta name="theme-color" content="#edf4ff" />
   <title>당뇨관리</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <div class="app-shell">
@@ -14,30 +14,33 @@
       <section id="view-home" class="view active">
         <header class="hero-header">
           <div>
-            <p class="eyebrow">DAILY CARE</p>
+            <p class="eyebrow">METABOLIC COACH</p>
             <h1>당뇨관리</h1>
-            <p class="hero-sub" id="heroDateText">오늘 기록을 관리할 수 있어요.</p>
+            <p class="hero-sub" id="heroDateText">오늘 흐름과 실천 포인트를 한눈에 확인하세요.</p>
           </div>
-          <button id="goToRecordBtn" class="pill-button">오늘 입력</button>
+          <button id="goToRecordBtn" class="pill-button" type="button">빠른 입력</button>
         </header>
 
         <section class="card summary-card">
-          <div class="section-head section-head-start">
+          <div class="section-head section-head-start home-summary-head">
             <div>
-              <p class="section-kicker">오늘의 요약</p>
-              <h2 id="summaryTitle">지금 흐름은 비교적 안정적입니다</h2>
+              <p class="section-kicker">오늘의 상태</p>
+              <h2 id="summaryTitle">최근 흐름을 분석하고 있어요</h2>
             </div>
-            <span id="summaryBadge" class="status-badge status-stable">안정적</span>
+            <span id="summaryBadge" class="status-badge status-caution">확인 중</span>
           </div>
 
-          <p class="summary-copy" id="summaryCopy">
-            최근 공복은 95mg/dL입니다. 최근 식후 최고는 128mg/dL입니다. 최신 HbA1c는 5.3%입니다. HOMA-IR는 2.77로 주의 수준입니다.
-          </p>
+          <p class="summary-copy" id="summaryCopy">공복혈당, 식후혈당, 검사 결과를 바탕으로 요약을 보여드립니다.</p>
 
-          <div class="metric-grid">
-            <article class="metric-card">
+          <div class="metric-grid metric-grid-home">
+            <article class="metric-card emphasis-card">
               <span class="metric-label">최근 공복</span>
               <strong class="metric-value" id="homeFasting">—</strong>
+              <span class="metric-unit">mg/dL</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">최근 7일 평균</span>
+              <strong class="metric-value" id="homeFastingAvg">—</strong>
               <span class="metric-unit">mg/dL</span>
             </article>
             <article class="metric-card">
@@ -46,14 +49,22 @@
               <span class="metric-unit">mg/dL</span>
             </article>
             <article class="metric-card">
-              <span class="metric-label">최근 HbA1c</span>
-              <strong class="metric-value" id="homeA1c">—</strong>
-              <span class="metric-unit">%</span>
-            </article>
-            <article class="metric-card">
               <span class="metric-label">HOMA-IR</span>
               <strong class="metric-value" id="homeHoma">—</strong>
               <span class="metric-unit" id="homeHomaStatus">인슐린저항성 지표</span>
+            </article>
+          </div>
+
+          <div class="coach-grid">
+            <article class="coach-card coach-primary">
+              <span class="coach-label">오늘의 한 가지</span>
+              <strong id="homeActionTitle">기록을 추가해보세요</strong>
+              <p id="homeActionBody">오늘 공복이나 식후 혈당을 입력하면 더 정확한 분석을 볼 수 있습니다.</p>
+            </article>
+            <article class="coach-card">
+              <span class="coach-label">최근 해석</span>
+              <strong id="homeTrendTitle">추세를 계산하는 중입니다</strong>
+              <p id="homeTrendCopy">데이터가 늘어나면 최근 2주 변화를 바탕으로 해석을 보여드릴게요.</p>
             </article>
           </div>
         </section>
@@ -61,29 +72,46 @@
         <section class="card compact-card">
           <div class="section-head">
             <h3>빠른 확인</h3>
-            <button class="text-link" data-nav="graph">그래프 보기</button>
+            <div class="inline-actions">
+              <button class="text-link" data-nav="graph" type="button">그래프</button>
+              <button class="text-link" data-nav="analysis" type="button">분석</button>
+            </div>
           </div>
           <div class="mini-chart-wrap">
             <svg id="homeChart" viewBox="0 0 360 170" aria-label="공복혈당 미리보기"></svg>
           </div>
-          <p class="mini-note" id="homeMiniNote">최근 공복혈당 흐름을 표시합니다.</p>
+          <p class="mini-note" id="homeMiniNote">최근 공복 흐름을 보여드립니다.</p>
         </section>
       </section>
 
       <section id="view-record" class="view">
         <div class="page-header">
           <h2>기록</h2>
-          <p>공복, 식후 1시간, 식후 2시간 기록을 저장하고 수정할 수 있어요.</p>
+          <p>가장 빠르게 저장하고, 바로 수정할 수 있게 구성했습니다.</p>
         </div>
 
         <section class="card">
           <div class="section-head">
-            <h3 id="recordFormTitle">혈당 입력</h3>
+            <div>
+              <h3 id="recordFormTitle">혈당 입력</h3>
+              <p class="section-subtext">공복, 식후 1시간, 식후 2시간 중 하나를 선택하세요.</p>
+            </div>
             <button id="recordCancelBtn" class="text-link hidden" type="button">수정 취소</button>
           </div>
 
           <form id="recordForm" class="form-grid">
             <input type="hidden" name="id" />
+            <input type="hidden" name="type" value="fasting" />
+
+            <div class="full">
+              <span class="field-title">혈당 구분</span>
+              <div class="choice-row" id="recordTypeButtons">
+                <button class="choice-chip active" type="button" data-record-type="fasting">공복</button>
+                <button class="choice-chip" type="button" data-record-type="post1">식후 1시간</button>
+                <button class="choice-chip" type="button" data-record-type="post2">식후 2시간</button>
+              </div>
+            </div>
+
             <label>
               날짜
               <input type="date" name="date" required />
@@ -93,18 +121,10 @@
               <input type="time" name="time" required />
             </label>
             <label>
-              구분
-              <select name="type">
-                <option value="fasting">공복</option>
-                <option value="post1">식후 1시간</option>
-                <option value="post2">식후 2시간</option>
-              </select>
+              혈당
+              <input type="number" name="value" min="40" max="400" placeholder="예: 95" required />
             </label>
             <label>
-              혈당
-              <input type="number" name="value" min="40" max="400" required />
-            </label>
-            <label class="full">
               관련 음식
               <input type="text" name="food" placeholder="예: 현미밥, 냉면" />
             </label>
@@ -112,15 +132,31 @@
               메모
               <input type="text" name="note" placeholder="예: 식후 15분 걷기" />
             </label>
+
+            <div class="full">
+              <div id="recordPreview" class="helper-panel">값을 입력하면 현재 범위를 바로 보여드립니다.</div>
+            </div>
+
             <button type="submit" class="primary-button full" id="recordSubmitBtn">혈당 저장</button>
           </form>
         </section>
 
-        <section class="card">
-          <div class="section-head">
-            <h3>최근 기록</h3>
+        <section class="card compact-card">
+          <div class="section-head stacked-on-mobile">
+            <div>
+              <h3>최근 기록</h3>
+              <p class="section-subtext">필터를 눌러 공복과 식후 기록을 나눠볼 수 있습니다.</p>
+            </div>
             <span class="inline-pill" id="recordCountPill">0건</span>
           </div>
+
+          <div class="choice-row filter-row" id="recordFilterButtons">
+            <button class="choice-chip active" type="button" data-record-filter="all">전체</button>
+            <button class="choice-chip" type="button" data-record-filter="fasting">공복</button>
+            <button class="choice-chip" type="button" data-record-filter="post1">식후 1시간</button>
+            <button class="choice-chip" type="button" data-record-filter="post2">식후 2시간</button>
+          </div>
+
           <div id="recordList" class="list-stack"></div>
         </section>
       </section>
@@ -128,7 +164,7 @@
       <section id="view-graph" class="view">
         <div class="page-header">
           <h2>그래프</h2>
-          <p>주간, 월간, 연간 흐름과 평균 혈당을 확인할 수 있어요.</p>
+          <p>주간, 월간, 연간 흐름과 목표선 대비 상태를 확인할 수 있습니다.</p>
         </div>
 
         <section class="card">
@@ -143,6 +179,25 @@
               <button class="segment-button" data-type="post1" type="button">식후 1시간</button>
               <button class="segment-button" data-type="post2" type="button">식후 2시간</button>
             </div>
+          </div>
+
+          <div class="stats-grid">
+            <article class="stats-card">
+              <span class="stats-label">평균</span>
+              <strong id="graphAvg">—</strong>
+            </article>
+            <article class="stats-card">
+              <span class="stats-label">최근</span>
+              <strong id="graphLatest">—</strong>
+            </article>
+            <article class="stats-card">
+              <span class="stats-label">최고</span>
+              <strong id="graphHigh">—</strong>
+            </article>
+            <article class="stats-card">
+              <span class="stats-label">추세</span>
+              <strong id="graphTrend">—</strong>
+            </article>
           </div>
 
           <div class="chart-panel">
@@ -163,12 +218,15 @@
       <section id="view-lab" class="view">
         <div class="page-header">
           <h2>검사</h2>
-          <p>혈액검사 수치와 HOMA-IR를 함께 관리할 수 있어요.</p>
+          <p>검사 수치 저장과 HOMA-IR 자동 계산을 한 화면에서 관리합니다.</p>
         </div>
 
         <section class="card">
           <div class="section-head">
-            <h3 id="labFormTitle">검사 입력</h3>
+            <div>
+              <h3 id="labFormTitle">검사 입력</h3>
+              <p class="section-subtext">입력 즉시 HOMA-IR 예상값을 보여드립니다.</p>
+            </div>
             <button id="labCancelBtn" class="text-link hidden" type="button">수정 취소</button>
           </div>
 
@@ -180,20 +238,29 @@
             </label>
             <label>
               공복혈당
-              <input type="number" name="fasting" min="40" max="400" required />
+              <input type="number" name="fasting" min="40" max="400" placeholder="예: 95" required />
             </label>
             <label>
               공복 인슐린
-              <input type="number" name="insulin" min="0" max="100" step="0.01" required />
+              <input type="number" name="insulin" min="0" max="100" step="0.01" placeholder="예: 11.8" required />
             </label>
             <label>
               HbA1c
-              <input type="number" name="a1c" min="3" max="15" step="0.1" required />
+              <input type="number" name="a1c" min="3" max="15" step="0.1" placeholder="예: 5.3" required />
             </label>
             <label class="full">
               메모
               <input type="text" name="note" placeholder="예: 건강검진 결과" />
             </label>
+
+            <div class="full">
+              <div class="helper-panel">
+                <span class="helper-label">계산 미리보기</span>
+                <strong id="labFormHoma">HOMA-IR —</strong>
+                <span id="labFormStatus">공복혈당과 인슐린을 입력하면 자동 계산됩니다.</span>
+              </div>
+            </div>
+
             <button type="submit" class="primary-button full" id="labSubmitBtn">검사 저장</button>
           </form>
         </section>
@@ -221,14 +288,52 @@
             </article>
           </div>
           <p class="summary-copy lab-summary" id="labInsight">검사를 입력하면 자동으로 분석해드려요.</p>
+          <p class="subtle-copy" id="labCompare">이전 검사와의 비교도 함께 표시됩니다.</p>
         </section>
 
-        <section class="card">
+        <section class="card compact-card">
           <div class="section-head">
             <h3>검사 기록</h3>
             <span class="inline-pill" id="labCountPill">0건</span>
           </div>
           <div id="labList" class="list-stack"></div>
+        </section>
+      </section>
+
+      <section id="view-analysis" class="view">
+        <div class="page-header">
+          <h2>분석</h2>
+          <p>기록을 기반으로 지금 가장 중요한 관리 포인트를 정리합니다.</p>
+        </div>
+
+        <section class="card summary-card">
+          <div class="section-head section-head-start">
+            <div>
+              <p class="section-kicker">종합 해석</p>
+              <h2 id="analysisOverallTitle">데이터를 분석 중입니다</h2>
+            </div>
+            <span id="analysisOverallBadge" class="status-badge status-caution">대기</span>
+          </div>
+          <p class="summary-copy" id="analysisOverallCopy">혈당과 검사 데이터를 모으면 종합 해석이 여기에 표시됩니다.</p>
+        </section>
+
+        <section class="analysis-grid">
+          <article class="card compact-card analysis-card">
+            <span class="analysis-label">반복 패턴</span>
+            <strong id="analysisPatternTitle">패턴 계산 중</strong>
+            <p id="analysisPatternCopy">식후와 공복 기록을 더 입력하면 반복 경향을 알려드립니다.</p>
+          </article>
+          <article class="card compact-card analysis-card">
+            <span class="analysis-label">지금 집중할 것</span>
+            <strong id="analysisFocusTitle">가장 중요한 포인트를 찾는 중입니다</strong>
+            <p id="analysisFocusCopy">공복, 식후, HOMA-IR 중 우선순위를 자동으로 정리합니다.</p>
+          </article>
+          <article class="card compact-card analysis-card wide-card">
+            <span class="analysis-label">이번 주 미션</span>
+            <strong id="analysisMissionTitle">미션을 준비하는 중입니다</strong>
+            <p id="analysisMissionCopy">데이터를 기반으로 한 가지 행동 미션을 제안해드립니다.</p>
+            <div id="analysisChecklist" class="check-list"></div>
+          </article>
         </section>
       </section>
     </main>
@@ -251,8 +356,14 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3v5.4l-4.7 7.8A3 3 0 0 0 7.9 21h8.2a3 3 0 0 0 2.6-4.8L14 8.4V3M9 12h6"/></svg>
       <span>검사</span>
     </button>
+    <button class="nav-button" data-nav="analysis" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 16l3-4 3 2 5-7 1 2"/></svg>
+      <span>분석</span>
+    </button>
   </nav>
 
-  <script src="app.js?v=3"></script>
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js?v=4"></script>
 </body>
 </html>
