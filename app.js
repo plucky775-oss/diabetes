@@ -1,5 +1,6 @@
-const STORAGE_KEY = 'diabetes-care-v3';
-const LEGACY_KEY = 'metabolic-reset-v3';
+const STORAGE_KEY = 'diabetes-care-v4';
+const LEGACY_KEY = 'diabetes-care-v3';
+const LEGACY_KEY_2 = 'metabolic-reset-v3';
 
 const defaultState = {
   diagnosis: [
@@ -60,7 +61,7 @@ function normalizeDiagnosisItem(item = {}) {
 }
 
 function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY);
+  const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY) || localStorage.getItem(LEGACY_KEY_2);
   if (!raw) {
     return {
       diagnosis: defaultState.diagnosis.map(normalizeDiagnosisItem),
@@ -161,7 +162,7 @@ function setTodayDefaults() {
   const { date } = nowParts();
   if (qs('glucoseDate') && !editState.glucoseId) qs('glucoseDate').value = date;
   if (qs('labDate') && !editState.labId) qs('labDate').value = date;
-  qs('todayText').textContent = `${date} 기준 기록을 관리할 수 있어요.`;
+  qs('todayText').textContent = `${date} 기준으로 오늘 기록을 관리할 수 있어요.`;
 }
 
 function switchView(view) {
@@ -184,7 +185,7 @@ function renderHome() {
   const latestPostPeak = latestPostValues.length ? Math.max(...latestPostValues) : null;
   const statusBase = lab ? classifyLab(lab.fasting, lab.a1c) : (latestFasting ? classifyGlucose(latestFasting.value, 'fasting') : { text: '준비중', level: '' });
 
-  qs('statusTitle').textContent = statusBase.level === 'good' ? '지금 흐름은 비교적 안정적입니다' : statusBase.level === 'warn' ? '혈당 흐름을 조금 더 관리해 주세요' : statusBase.level === 'danger' ? '기록을 보며 집중 관리가 필요합니다' : '기록을 시작해 주세요';
+  qs('statusTitle').textContent = statusBase.level === 'good' ? '지금 흐름은 비교적 안정적입니다' : statusBase.level === 'warn' ? '조금만 더 관리하면 더 좋아질 수 있습니다' : statusBase.level === 'danger' ? '기록을 보며 집중 관리가 필요합니다' : '기록을 시작해 주세요';
   qs('statusChip').textContent = statusBase.text;
   qs('statusChip').className = `status-chip ${statusBase.level || ''}`.trim();
 
@@ -249,7 +250,7 @@ function renderGlucoseItem(item, withActions = true) {
       </div>
       ${withActions
         ? `<div class="list-actions"><button class="edit-btn" type="button" data-edit-glucose="${item.id}">수정</button><button class="delete-btn" type="button" data-delete-glucose="${item.id}">삭제</button></div>`
-        : `<span class="list-tag">${status.text}</span>`}
+        : `<span class="list-tag ${status.level}">${status.text}</span>`}
     </div>
   `;
 }
@@ -272,7 +273,7 @@ function renderChart() {
   });
 
   if (!source.length) {
-    svg.innerHTML = `<rect x="0" y="0" width="360" height="220" rx="16" fill="rgba(255,255,255,0.02)"></rect><text x="180" y="110" text-anchor="middle" fill="#94a3b8" font-size="14">기록이 없습니다</text>`;
+    svg.innerHTML = `<rect x="0" y="0" width="360" height="220" rx="16" fill="#f4f8fe"></rect><text x="180" y="110" text-anchor="middle" fill="#7890a8" font-size="14">기록이 없습니다</text>`;
     qs('chartAvg').textContent = '—';
     qs('chartMax').textContent = '—';
     qs('chartMin').textContent = '—';
@@ -301,25 +302,25 @@ function renderChart() {
   const targetY = toY(target);
   const dots = points.map(point => {
     const stateClass = classifyGlucose(point.item.value, chartType);
-    const fill = stateClass.level === 'good' ? '#22c55e' : stateClass.level === 'warn' ? '#f59e0b' : '#ef4444';
+    const fill = stateClass.level === 'good' ? '#0f9f67' : stateClass.level === 'warn' ? '#c87a00' : '#cb3a43';
     return `<circle cx="${point.x}" cy="${point.y}" r="5" fill="${fill}"></circle>`;
   }).join('');
-  const labels = points.map(point => `<text x="${point.x}" y="204" text-anchor="middle" fill="#94a3b8" font-size="10">${point.item.date.slice(5)}</text>`).join('');
+  const labels = points.map(point => `<text x="${point.x}" y="204" text-anchor="middle" fill="#7890a8" font-size="10">${point.item.date.slice(5)}</text>`).join('');
 
   svg.innerHTML = `
     <defs>
       <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.28"></stop>
-        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"></stop>
+        <stop offset="0%" stop-color="#1769e0" stop-opacity="0.28"></stop>
+        <stop offset="100%" stop-color="#1769e0" stop-opacity="0"></stop>
       </linearGradient>
     </defs>
-    <rect x="0" y="0" width="360" height="220" rx="18" fill="rgba(255,255,255,0.02)"></rect>
-    <line x1="${px}" y1="${targetY}" x2="${w - px}" y2="${targetY}" stroke="#f59e0b" stroke-dasharray="5 5" stroke-opacity="0.7"></line>
+    <rect x="0" y="0" width="360" height="220" rx="18" fill="#f4f8fe"></rect>
+    <line x1="${px}" y1="${targetY}" x2="${w - px}" y2="${targetY}" stroke="#c87a00" stroke-dasharray="5 5" stroke-opacity="0.7"></line>
     <polygon points="${areaPoints}" fill="url(#areaFill)"></polygon>
-    <polyline points="${pathPoints}" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+    <polyline points="${pathPoints}" fill="none" stroke="#1769e0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
     ${dots}
     ${labels}
-    <text x="${w - px}" y="${targetY - 8}" text-anchor="end" fill="#fbbf24" font-size="11">기준 ${target}</text>
+    <text x="${w - px}" y="${targetY - 8}" text-anchor="end" fill="#c87a00" font-size="11">기준 ${target}</text>
   `;
 
   qs('chartAvg').textContent = `${average(values).toFixed(1)}`;
@@ -369,10 +370,10 @@ function renderLabs() {
     qs('labA1c').textContent = `${latest.a1c}%`;
     qs('labIrLevel').textContent = homaStatus.text;
     qs('labInsight').textContent = status.level === 'good'
-      ? `최신 HOMA-IR ${homa.toFixed(2)}로 인슐린저항성 수준은 ${homaStatus.text}입니다. 현재 루틴을 유지하면서 공복과 식후 흐름을 같이 보시면 좋습니다.`
+      ? `최신 HOMA-IR는 ${homa.toFixed(2)}이고 인슐린저항성 수준은 ${homaStatus.text}입니다. 현재 루틴을 유지하면서 공복과 식후 흐름을 같이 보시면 좋습니다.`
       : status.level === 'warn'
-        ? `최신 HOMA-IR ${homa.toFixed(2)}로 인슐린저항성 수준은 ${homaStatus.text}입니다. 공복혈당과 식후혈당 기록을 함께 보면서 변화를 확인해 보세요.`
-        : `최신 HOMA-IR ${homa.toFixed(2)}로 인슐린저항성 수준은 ${homaStatus.text}입니다. 검사 수치 추세를 꾸준히 확인하고 필요 시 의료진과 상담하는 것이 좋습니다.`;
+        ? `최신 HOMA-IR는 ${homa.toFixed(2)}이고 인슐린저항성 수준은 ${homaStatus.text}입니다. 공복혈당과 식후혈당 기록을 함께 보면서 변화를 확인해 보세요.`
+        : `최신 HOMA-IR는 ${homa.toFixed(2)}이고 인슐린저항성 수준은 ${homaStatus.text}입니다. 검사 수치 추세를 꾸준히 확인하고 필요 시 의료진과 상담하는 것이 좋습니다.`;
   }
 
   const items = sortByDateTimeDesc(state.diagnosis);

@@ -4,19 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>당뇨관리</title>
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#f5f7fb" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="stylesheet" href="./styles.css?v=edit2" />
+  <link rel="stylesheet" href="./styles.css?v=85a" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <p class="topbar-label">Prediabetes Care</p>
+      <div class="topbar-copy">
+        <p class="topbar-label">Daily Care</p>
         <h1>당뇨관리</h1>
         <p class="topbar-sub" id="todayText">오늘 기록을 불러오는 중...</p>
       </div>
-      <button class="icon-pill" id="todayShortcutBtn" type="button">오늘</button>
+      <button class="icon-pill" id="todayShortcutBtn" type="button">오늘 입력</button>
     </header>
 
     <main class="main-stack">
@@ -24,57 +24,61 @@
         <article class="hero-card">
           <div class="hero-top">
             <div>
-              <p class="hero-label">현재 상태</p>
+              <p class="hero-label">오늘의 요약</p>
               <h2 id="statusTitle">기록을 시작해 주세요</h2>
             </div>
             <span class="status-chip" id="statusChip">준비중</span>
           </div>
-          <p class="hero-message" id="statusMessage">공복혈당, 식후혈당, HbA1c를 기록하면 한눈에 보기 쉽게 정리됩니다.</p>
+          <p class="hero-message" id="statusMessage">공복혈당, 식후혈당, HbA1c를 기록하면 핵심 내용만 깔끔하게 정리됩니다.</p>
           <div class="hero-stats-grid">
             <div class="hero-stat">
               <span>최근 공복</span>
               <strong id="homeFasting">—</strong>
+              <small>mg/dL</small>
             </div>
             <div class="hero-stat">
               <span>최근 식후 최고</span>
               <strong id="homePostPeak">—</strong>
+              <small>mg/dL</small>
             </div>
             <div class="hero-stat">
               <span>최근 HbA1c</span>
               <strong id="homeA1c">—</strong>
+              <small>%</small>
             </div>
             <div class="hero-stat">
               <span>HOMA-IR</span>
               <strong id="homeHoma">—</strong>
+              <small>인슐린저항성 지표</small>
             </div>
           </div>
         </article>
 
         <section class="quick-actions">
-          <button class="action-card" data-jump="log" type="button">
-            <span class="action-emoji">🩸</span>
-            <strong>혈당 기록</strong>
-            <small>공복/식후 수치 바로 입력</small>
+          <button class="action-card action-primary" data-jump="log" type="button">
+            <span class="action-badge">빠른 입력</span>
+            <strong>혈당 기록하기</strong>
+            <small>공복 / 식후 1시간 / 식후 2시간</small>
           </button>
           <button class="action-card" data-jump="chart" type="button">
-            <span class="action-emoji">📈</span>
-            <strong>그래프 보기</strong>
-            <small>주간·월간·연간 추세 확인</small>
+            <span class="action-badge muted">추세 보기</span>
+            <strong>그래프 확인</strong>
+            <small>7일 · 30일 · 1년 흐름</small>
           </button>
           <button class="action-card" data-jump="labs" type="button">
-            <span class="action-emoji">🧪</span>
-            <strong>혈액검사 기록</strong>
-            <small>HbA1c·인슐린·HOMA-IR 관리</small>
+            <span class="action-badge muted">검사 관리</span>
+            <strong>혈액검사 입력</strong>
+            <small>HbA1c · 인슐린 · HOMA-IR</small>
           </button>
         </section>
 
         <section class="summary-grid compact-grid">
-          <article class="soft-card mini-card">
+          <article class="soft-card mini-card metric-card">
             <span>7일 평균 공복</span>
             <strong id="avgFasting7">—</strong>
             <small id="fastingTrend">기록 대기</small>
           </article>
-          <article class="soft-card mini-card">
+          <article class="soft-card mini-card metric-card">
             <span>7일 평균 식후</span>
             <strong id="avgPost7">—</strong>
             <small id="postTrend">기록 대기</small>
@@ -82,10 +86,10 @@
         </section>
 
         <article class="soft-card">
-          <div class="card-head">
+          <div class="card-head compact-head">
             <div>
               <h3>최근 혈당 기록</h3>
-              <p>가장 최근에 입력한 혈당입니다.</p>
+              <p>최근 입력 3개만 보여줍니다.</p>
             </div>
             <button class="text-btn" data-jump="log" type="button">전체보기</button>
           </div>
@@ -93,10 +97,10 @@
         </article>
 
         <article class="soft-card">
-          <div class="card-head">
+          <div class="card-head compact-head">
             <div>
               <h3>최근 혈액검사</h3>
-              <p>최신 검사 수치를 요약합니다.</p>
+              <p>최신 검사 결과를 한눈에 확인합니다.</p>
             </div>
             <button class="text-btn" data-jump="labs" type="button">관리하기</button>
           </div>
@@ -109,8 +113,8 @@
           <div class="card-head">
             <div>
               <h2>혈당 기록</h2>
-              <p>복잡한 옵션은 빼고 꼭 필요한 항목만 남겼습니다.</p>
-          <div class="form-status hidden" id="glucoseFormStatus"></div>
+              <p>꼭 필요한 항목만 간단하게 입력합니다.</p>
+              <div class="form-status hidden" id="glucoseFormStatus"></div>
             </div>
           </div>
           <form id="glucoseForm" class="form-grid">
@@ -146,10 +150,10 @@
         </article>
 
         <article class="soft-card">
-          <div class="card-head">
+          <div class="card-head compact-head">
             <div>
               <h3>최근 기록</h3>
-              <p>잘못 입력한 기록은 수정하거나 바로 삭제할 수 있습니다.</p>
+              <p>수정과 삭제를 바로 할 수 있습니다.</p>
             </div>
           </div>
           <div class="list-stack" id="glucoseList"></div>
@@ -200,8 +204,8 @@
           <div class="card-head">
             <div>
               <h2>혈액검사 기록</h2>
-              <p>HbA1c와 인슐린 저항성 확인에 필요한 항목만 남겼습니다.</p>
-          <div class="form-status hidden" id="labFormStatus"></div>
+              <p>HbA1c와 인슐린저항성 확인에 필요한 항목만 남겼습니다.</p>
+              <div class="form-status hidden" id="labFormStatus"></div>
             </div>
           </div>
           <form id="labForm" class="form-grid">
@@ -241,7 +245,7 @@
         </article>
 
         <article class="soft-card">
-          <div class="card-head">
+          <div class="card-head compact-head">
             <div>
               <h3>최신 해석</h3>
               <p>최근 검사 결과를 자동으로 정리합니다.</p>
@@ -269,7 +273,7 @@
         </article>
 
         <article class="soft-card">
-          <div class="card-head">
+          <div class="card-head compact-head">
             <div>
               <h3>검사 기록 목록</h3>
               <p>최근 검사부터 표시됩니다.</p>
@@ -282,20 +286,24 @@
 
     <nav class="bottom-nav" aria-label="하단 메뉴">
       <button class="nav-btn active" type="button" data-view="home">
-        <span>홈</span>
+        <span class="nav-ico">⌂</span>
+        <span class="nav-label">홈</span>
       </button>
       <button class="nav-btn" type="button" data-view="log">
-        <span>기록</span>
+        <span class="nav-ico">✎</span>
+        <span class="nav-label">기록</span>
       </button>
       <button class="nav-btn" type="button" data-view="chart">
-        <span>그래프</span>
+        <span class="nav-ico">▁</span>
+        <span class="nav-label">그래프</span>
       </button>
       <button class="nav-btn" type="button" data-view="labs">
-        <span>검사</span>
+        <span class="nav-ico">◎</span>
+        <span class="nav-label">검사</span>
       </button>
     </nav>
   </div>
 
-  <script src="./app.js?v=edit2"></script>
+  <script src="./app.js?v=85a"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
   "short_name": "당뇨관리",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#09111f",
-  "theme_color": "#0f172a",
+  "background_color": "#f5f7fb",
+  "theme_color": "#f5f7fb",
   "icons": []
 }
