@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'diabetes-care-v2';
+const STORAGE_KEY = 'diabetes-care-v3';
 const LEGACY_KEY = 'metabolic-reset-v3';
 
 const defaultState = {
@@ -417,11 +417,7 @@ function bindDeleteActions() {
 }
 
 function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
-    });
-  }
+  // 캐시 문제를 줄이기 위해 서비스워커를 더 이상 등록하지 않습니다.
 }
 
 function init() {
