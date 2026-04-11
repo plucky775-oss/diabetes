@@ -1,418 +1,1574 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Metabolic Reset</title>
-  <meta name="theme-color" content="#07111f" />
-  <link rel="stylesheet" href="styles.css" />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap');
+
+:root {
+–bg: #060e1a;
+–surface: #0c1829;
+–surface-2: #111f36;
+–border: rgba(255,255,255,0.07);
+–border-hi: rgba(255,255,255,0.13);
+–text: #ddeeff;
+–muted: #6a85a4;
+–accent: #22c55e;
+–accent-2: #38bdf8;
+–warn: #f97316;
+–danger: #ef4444;
+–violet: #a78bfa;
+–teal: #2dd4bf;
+–radius-lg: 22px;
+–radius-md: 16px;
+–radius-sm: 12px;
+–shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+- { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+font-family: ‘DM Sans’, -apple-system, sans-serif;
+background: var(–bg);
+color: var(–text);
+min-height: 100vh;
+/* subtle radial gradient at top */
+background-image: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(34,197,94,0.06) 0%, transparent 70%);
+background-attachment: fixed;
+}
+
+button, input, select { font: inherit; color: inherit; }
+
+/* ── SHELL ── */
+.app-shell {
+max-width: 680px;
+margin: 0 auto;
+min-height: 100vh;
+padding: 0 16px 100px;
+}
+
+/* ── HEADER ── */
+.app-header {
+display: flex;
+justify-content: space-between;
+align-items: flex-start;
+padding: 24px 0 16px;
+gap: 12px;
+}
+.eyebrow {
+font-size: 11px;
+letter-spacing: 0.2em;
+color: var(–accent-2);
+margin-bottom: 4px;
+font-weight: 500;
+}
+.app-header h1 {
+font-size: 26px;
+font-weight: 700;
+line-height: 1.1;
+}
+.icon-btn {
+background: var(–surface);
+border: 1px solid var(–border-hi);
+border-radius: var(–radius-md);
+padding: 10px 16px;
+cursor: pointer;
+font-size: 14px;
+font-weight: 600;
+color: var(–text);
+white-space: nowrap;
+position: relative;
+flex-shrink: 0;
+}
+.badge-dot {
+position: absolute;
+top: -4px; right: -4px;
+width: 10px; height: 10px;
+border-radius: 50%;
+background: var(–accent);
+box-shadow: 0 0 8px var(–accent);
+display: none;
+}
+.badge-dot.visible { display: block; }
+
+/* ── VIEWS ── */
+.main-content { display: grid; gap: 12px; }
+.view { display: none; gap: 12px; }
+.view.active { display: grid; }
+
+/* ── PAGE HEADER ── */
+.page-header {
+padding: 20px 0 4px;
+}
+.page-header h2 {
+font-size: 24px;
+font-weight: 700;
+margin-bottom: 4px;
+}
+.page-header p {
+color: var(–muted);
+font-size: 14px;
+}
+
+/* ── HERO SCORE CARD ── */
+.hero-score-card {
+background: linear-gradient(135deg, rgba(14,26,48,0.98), rgba(10,18,34,0.98));
+border: 1px solid rgba(34,197,94,0.25);
+border-radius: var(–radius-lg);
+box-shadow: 0 0 0 1px rgba(34,197,94,0.05), var(–shadow);
+padding: 22px;
+display: flex;
+gap: 20px;
+align-items: flex-start;
+}
+.score-left { flex: 1; min-width: 0; }
+.score-label-row {
+display: flex;
+align-items: center;
+gap: 8px;
+margin-bottom: 6px;
+}
+.status-dot {
+width: 10px; height: 10px;
+border-radius: 50%;
+background: var(–accent);
+box-shadow: 0 0 10px var(–accent);
+flex-shrink: 0;
+}
+.score-label {
+font-size: 13px;
+color: var(–muted);
+font-weight: 500;
+}
+.score-number {
+font-family: ‘DM Mono’, monospace;
+font-size: 64px;
+font-weight: 500;
+line-height: 1;
+margin-bottom: 6px;
+color: #fff;
+}
+.score-sub {
+font-size: 13px;
+color: var(–muted);
+margin-bottom: 14px;
+}
+.score-bar {
+height: 8px;
+background: rgba(255,255,255,0.07);
+border-radius: 999px;
+overflow: hidden;
+position: relative;
+}
+.score-bar-fill {
+height: 100%;
+width: 68%;
+background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #22c55e 100%);
+border-radius: 999px;
+transition: width 0.6s ease;
+}
+.score-bar-labels {
+display: flex;
+justify-content: space-between;
+margin-top: 5px;
+font-size: 11px;
+color: var(–muted);
+}
+.score-right {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 8px;
+flex-shrink: 0;
+width: 160px;
+}
+.quick-stat {
+background: rgba(255,255,255,0.03);
+border: 1px solid var(–border);
+border-radius: var(–radius-sm);
+padding: 10px 12px;
+}
+.qs-label {
+display: block;
+font-size: 11px;
+color: var(–muted);
+margin-bottom: 4px;
+}
+.qs-value {
+font-size: 18px;
+font-weight: 700;
+font-family: ‘DM Mono’, monospace;
+}
+.qs-value.small { font-size: 13px; font-family: ‘DM Sans’, sans-serif; }
+
+/* ── MISSION CARD ── */
+.mission-card {
+background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(16,30,52,0.98));
+border: 1px solid rgba(34,197,94,0.18);
+border-radius: var(–radius-lg);
+padding: 20px;
+box-shadow: var(–shadow);
+}
+.mission-top {
+display: flex;
+justify-content: space-between;
+align-items: flex-start;
+margin-bottom: 10px;
+}
+.mission-phase {
+display: inline-block;
+font-size: 11px;
+font-weight: 600;
+letter-spacing: 0.1em;
+color: var(–accent);
+margin-bottom: 5px;
+text-transform: uppercase;
+}
+.mission-title {
+display: block;
+font-size: 20px;
+font-weight: 700;
+}
+.mission-icon {
+font-size: 28px;
+flex-shrink: 0;
+}
+.mission-text {
+font-size: 14px;
+color: var(–muted);
+margin-bottom: 16px;
+line-height: 1.5;
+}
+.mission-actions, .btn-row {
+display: flex;
+flex-wrap: wrap;
+gap: 10px;
+}
+
+/* ── CARD ── */
+.card {
+background: linear-gradient(180deg, var(–surface), rgba(9,17,32,0.98));
+border: 1px solid var(–border);
+border-radius: var(–radius-lg);
+padding: 20px;
+box-shadow: var(–shadow);
+}
+.card h2, .card h3 { margin-bottom: 12px; font-weight: 700; }
+.card h2 { font-size: 18px; }
+.card h3 { font-size: 16px; }
+
+/* ── CHART ── */
+.chart-section {}
+.chart-wrap {
+background: rgba(255,255,255,0.02);
+border: 1px solid var(–border);
+border-radius: var(–radius-md);
+padding: 8px;
+overflow: hidden;
+}
+svg { width: 100%; height: auto; display: block; }
+
+/* ── MENU GRID (home) ── */
+.menu-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 10px;
+}
+.menu-card {
+background: var(–surface);
+border: 1px solid var(–border);
+border-radius: var(–radius-lg);
+padding: 18px 14px;
+cursor: pointer;
+text-align: left;
+display: flex;
+flex-direction: column;
+gap: 8px;
+transition: border-color 0.2s, background 0.2s;
+}
+.menu-card:hover {
+border-color: var(–border-hi);
+background: var(–surface-2);
+}
+.menu-icon {
+width: 42px; height: 42px;
+border-radius: 14px;
+display: grid;
+place-items: center;
+font-size: 20px;
+}
+.menu-icon.red    { background: rgba(239,68,68,.15); }
+.menu-icon.blue   { background: rgba(56,189,248,.15); }
+.menu-icon.green  { background: rgba(34,197,94,.15); }
+.menu-icon.orange { background: rgba(249,115,22,.15); }
+.menu-icon.violet { background: rgba(167,139,250,.15); }
+.menu-icon.teal   { background: rgba(45,212,191,.15); }
+.menu-card strong {
+font-size: 14px;
+font-weight: 700;
+color: var(–text);
+line-height: 1.2;
+}
+.menu-card span {
+font-size: 12px;
+color: var(–muted);
+line-height: 1.3;
+}
+
+/* ── SECTION TITLE ROW ── */
+.section-title-row {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 10px;
+margin-bottom: 14px;
+}
+.section-title-row h3 { margin-bottom: 0; }
+
+/* ── STAT ROW ── */
+.stat-row {
+display: grid;
+gap: 10px;
+}
+.stat-row.three { grid-template-columns: repeat(3, 1fr); }
+.stat-row.two   { grid-template-columns: repeat(2, 1fr); }
+.stat-box {
+background: rgba(255,255,255,0.03);
+border: 1px solid var(–border);
+border-radius: var(–radius-md);
+padding: 14px 12px;
+}
+.stat-box span {
+display: block;
+font-size: 12px;
+color: var(–muted);
+margin-bottom: 6px;
+}
+.stat-box strong {
+font-size: 22px;
+font-weight: 700;
+font-family: ‘DM Mono’, monospace;
+}
+.stat-box strong.small-strong {
+font-size: 14px;
+font-family: ‘DM Sans’, sans-serif;
+}
+
+/* ── PILL ── */
+.pill {
+padding: 5px 11px;
+border-radius: 999px;
+font-size: 12px;
+font-weight: 600;
+background: rgba(255,255,255,0.06);
+border: 1px solid var(–border);
+color: #b8cce4;
+white-space: nowrap;
+flex-shrink: 0;
+}
+.pill.warn { background: rgba(249,115,22,.15); color: #fdba74; }
+.stage-pill { background: rgba(34,197,94,0.12); color: var(–accent); }
+
+/* ── FORMS ── */
+.form-grid {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 12px;
+}
+.form-grid label, .inline-field {
+display: grid;
+gap: 6px;
+font-size: 13px;
+color: #a0bcd8;
+font-weight: 500;
+}
+.form-grid .full { grid-column: 1 / -1; }
+input, select {
+width: 100%;
+background: rgba(6,14,26,0.8);
+border: 1px solid var(–border-hi);
+border-radius: var(–radius-sm);
+color: var(–text);
+padding: 12px 14px;
+outline: none;
+transition: border-color 0.2s;
+}
+input:focus, select:focus {
+border-color: rgba(56,189,248,0.4);
+}
+.checkbox-row {
+display: flex !important;
+align-items: center;
+gap: 10px;
+background: rgba(255,255,255,0.02);
+border: 1px solid var(–border);
+padding: 12px 14px;
+border-radius: var(–radius-sm);
+font-size: 14px;
+cursor: pointer;
+}
+.checkbox-row input { width: auto; padding: 0; }
+
+/* ── BUTTONS ── */
+.primary-btn {
+background: linear-gradient(135deg, #22c55e, #16a34a);
+color: white;
+border: none;
+border-radius: var(–radius-sm);
+padding: 12px 20px;
+font-weight: 700;
+cursor: pointer;
+font-size: 15px;
+transition: opacity 0.2s;
+}
+.primary-btn:hover { opacity: 0.88; }
+.primary-btn.full { width: 100%; grid-column: 1 / -1; }
+.secondary-btn {
+background: rgba(56,189,248,0.1);
+color: #93d9f8;
+border: 1px solid rgba(56,189,248,0.2);
+border-radius: var(–radius-sm);
+padding: 12px 20px;
+font-weight: 600;
+cursor: pointer;
+}
+.ghost-btn {
+background: rgba(255,255,255,0.05);
+color: var(–muted);
+border: 1px solid var(–border);
+border-radius: var(–radius-sm);
+padding: 12px 20px;
+font-weight: 600;
+cursor: pointer;
+}
+
+/* ── TIMER ── */
+.timer-block { text-align: center; padding: 10px 0 16px; }
+.timer-display {
+font-family: ‘DM Mono’, monospace;
+font-size: 56px;
+font-weight: 500;
+line-height: 1;
+margin-bottom: 8px;
+color: #fff;
+}
+.timer-guide { font-size: 14px; color: var(–muted); }
+
+/* ── LIST STACK ── */
+.list-stack { display: grid; gap: 10px; }
+.list-item {
+background: rgba(255,255,255,0.02);
+border: 1px solid var(–border);
+border-radius: var(–radius-md);
+padding: 14px;
+}
+.list-item-top {
+display: flex;
+justify-content: space-between;
+gap: 12px;
+margin-bottom: 4px;
+}
+.list-item strong { font-size: 15px; }
+.list-item small { color: var(–muted); font-size: 13px; }
+
+/* ── CHIP GRID ── */
+.chip-grid {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 10px;
+}
+.chip {
+background: rgba(255,255,255,0.02);
+border: 1px solid var(–border);
+border-radius: var(–radius-sm);
+padding: 12px 14px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+font-size: 14px;
+}
+.chip strong { color: var(–accent); }
+
+/* ── INSIGHT ── */
+.insight-card {
+background: rgba(255,255,255,0.02);
+border: 1px solid var(–border);
+border-radius: var(–radius-md);
+padding: 14px;
+font-size: 14px;
+color: var(–muted);
+line-height: 1.6;
+}
+.insight-stack { display: grid; gap: 10px; margin-top: 12px; }
+
+/* ── INLINE FIELD ROW ── */
+.inline-field-row {
+display: flex;
+gap: 10px;
+align-items: flex-end;
+margin-bottom: 10px;
+}
+.inline-field-row .inline-field { flex: 1; }
+.inline-field-row .secondary-btn { flex-shrink: 0; white-space: nowrap; }
+
+/* ── SUMMARY TEXT ── */
+.summary-text {
+font-size: 13px;
+color: var(–muted);
+margin-top: 10px;
+line-height: 1.5;
+}
+
+/* ── SEG / TYPE TABS ── */
+.seg-group {
+display: flex;
+gap: 4px;
+background: rgba(255,255,255,0.04);
+border-radius: var(–radius-sm);
+padding: 4px;
+}
+.seg-btn {
+background: transparent;
+border: none;
+color: var(–muted);
+padding: 6px 12px;
+border-radius: 10px;
+cursor: pointer;
+font-size: 13px;
+font-weight: 600;
+transition: background 0.15s, color 0.15s;
+}
+.seg-btn.active {
+background: rgba(255,255,255,0.1);
+color: var(–text);
+}
+.type-tabs {
+display: flex;
+gap: 6px;
+margin-bottom: 12px;
+}
+.type-btn {
+background: rgba(255,255,255,0.04);
+border: 1px solid var(–border);
+border-radius: var(–radius-sm);
+color: var(–muted);
+padding: 7px 14px;
+cursor: pointer;
+font-size: 13px;
+font-weight: 600;
+transition: all 0.15s;
+}
+.type-btn.active {
+background: rgba(56,189,248,0.12);
+border-color: rgba(56,189,248,0.3);
+color: var(–accent-2);
+}
+
+/* ── ROADMAP ── */
+.week-label {
+display: grid;
+gap: 8px;
+font-size: 13px;
+color: var(–muted);
+margin-bottom: 10px;
+}
+.week-label input[type=“range”] {
+padding: 0;
+height: 6px;
+accent-color: var(–accent);
+}
+.progress-bar {
+height: 8px;
+background: rgba(255,255,255,0.07);
+border-radius: 999px;
+overflow: hidden;
+margin-bottom: 14px;
+}
+#roadmapProgressFill {
+height: 100%;
+background: linear-gradient(90deg, var(–accent-2), var(–accent));
+border-radius: 999px;
+transition: width 0.4s ease;
+}
+.phase-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 10px;
+}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+position: fixed;
+left: 50%;
+bottom: 12px;
+transform: translateX(-50%);
+width: min(680px, calc(100% - 24px));
+display: grid;
+grid-template-columns: repeat(5, 1fr);
+gap: 4px;
+padding: 8px;
+border-radius: var(–radius-lg);
+background: rgba(6,14,26,0.92);
+border: 1px solid var(–border-hi);
+backdrop-filter: blur(20px);
+-webkit-backdrop-filter: blur(20px);
+box-shadow: 0 -4px 40px rgba(0,0,0,0.5);
+z-index: 100;
+}
+.nav-btn {
+background: transparent;
+border: none;
+padding: 8px 4px;
+border-radius: var(–radius-md);
+cursor: pointer;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 3px;
+transition: background 0.15s;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.04); }
+.nav-btn.active { background: rgba(255,255,255,0.07); }
+.nav-icon { font-size: 20px; line-height: 1; }
+.nav-label {
+font-size: 11px;
+font-weight: 600;
+color: var(–muted);
+line-height: 1;
+}
+.nav-btn.active .nav-label { color: var(–text); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+.hero-score-card { flex-direction: column; }
+.score-right { width: 100%; grid-template-columns: repeat(4, 1fr); }
+.qs-value { font-size: 15px; }
+.score-number { font-size: 52px; }
+.menu-grid { grid-template-columns: repeat(3, 1fr); }
+.form-grid, .stat-row.three, .chip-grid { grid-template-columns: 1fr; }
+.phase-grid { grid-template-columns: 1fr; }
+.app-shell { padding-bottom: 110px; }
+}
+@media (max-width: 380px) {
+.menu-grid { grid-template-columns: repeat(2, 1fr); }
+.score-right { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+
 </head>
 <body>
+
   <div class="app-shell">
 
-    <main class="main-content">
+```
+<main class="main-content">
 
-      <!-- HOME -->
-      <section id="view-home" class="view active">
+  <!-- HOME -->
+  <section id="view-home" class="view active">
 
-        <header class="app-header">
-          <div class="header-left">
-            <div class="eyebrow">METABOLIC HUB</div>
-            <h1>Metabolic Reset</h1>
-          </div>
-          <button id="todayMissionBtn" class="icon-btn mission-badge">
-            <span class="badge-dot" id="missionDotBadge"></span>
-            🎯 오늘 미션
-          </button>
-        </header>
-
-        <!-- Hero Score -->
-        <article class="hero-score-card">
-          <div class="score-left">
-            <div class="score-label-row">
-              <span class="status-dot" id="statusDot"></span>
-              <span class="score-label" id="statusLabel">대사 유연성 구역</span>
-            </div>
-            <div class="score-number" id="metabolicScore">82</div>
-            <div class="score-sub" id="metabolicSummary">최근 기록 기준 안정적인 흐름입니다.</div>
-            <div class="score-bar">
-              <div class="score-bar-fill" id="rangeFill"></div>
-              <div class="score-bar-labels">
-                <span>위험</span>
-                <span>회복</span>
-              </div>
-            </div>
-          </div>
-          <div class="score-right">
-            <div class="quick-stat">
-              <span class="qs-label">공복혈당</span>
-              <strong class="qs-value" id="homeFasting">—</strong>
-            </div>
-            <div class="quick-stat">
-              <span class="qs-label">HOMA-R</span>
-              <strong class="qs-value" id="homeHoma">—</strong>
-            </div>
-            <div class="quick-stat">
-              <span class="qs-label">운동 공백</span>
-              <strong class="qs-value" id="homeExerciseGap">0일</strong>
-            </div>
-            <div class="quick-stat">
-              <span class="qs-label">위험 음식</span>
-              <strong class="qs-value small" id="homeRiskFood">—</strong>
-            </div>
-          </div>
-        </article>
-
-        <!-- Today Mission Card -->
-        <article class="mission-card">
-          <div class="mission-top">
-            <div>
-              <span class="mission-phase" id="phasePill">Phase 1</span>
-              <strong class="mission-title" id="todayMissionTitle">식후 15분 걷기</strong>
-            </div>
-            <span class="mission-icon">🏃</span>
-          </div>
-          <p class="mission-text" id="todayMissionText">식사 종료 후 30분 안에 15분 걷기를 완료해 보세요.</p>
-          <div class="mission-actions">
-            <button id="missionCompleteBtn" class="primary-btn">✓ 완료</button>
-            <button id="missionSkipBtn" class="ghost-btn">다음 미션 →</button>
-          </div>
-        </article>
-
-        <!-- Mini Chart -->
-        <div class="card chart-section">
-          <div class="section-title-row">
-            <h2>혈당 흐름</h2>
-            <span class="pill" id="roadmapPill">최근 12회</span>
-          </div>
-          <div class="chart-wrap">
-            <svg id="roadmapChart" viewBox="0 0 360 160" aria-label="혈당 맵"></svg>
-          </div>
-        </div>
-
-        <!-- Menu Grid -->
-        <div class="menu-grid">
-          <button class="menu-card" data-nav="diagnosis">
-            <div class="menu-icon red">🧪</div>
-            <strong>정밀 진단</strong>
-            <span>HOMA-R · 위험도</span>
-          </button>
-          <button class="menu-card" data-nav="glucose">
-            <div class="menu-icon blue">🩸</div>
-            <strong>혈당 기록</strong>
-            <span>흐름 · 스파이크</span>
-          </button>
-          <button class="menu-card" data-nav="diet">
-            <div class="menu-icon green">🥗</div>
-            <strong>전략 식단</strong>
-            <span>거꾸로 식사 · GI</span>
-          </button>
-          <button class="menu-card" data-nav="exercise">
-            <div class="menu-icon orange">🏃</div>
-            <strong>운동</strong>
-            <span>골든타임 · GLUT4</span>
-          </button>
-          <button class="menu-card" data-nav="hormone">
-            <div class="menu-icon violet">🧠</div>
-            <strong>호르몬</strong>
-            <span>수면 · 스트레스</span>
-          </button>
-          <button class="menu-card" data-nav="roadmap">
-            <div class="menu-icon teal">🛣️</div>
-            <strong>12주 로드맵</strong>
-            <span>Phase 진행률</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- DIAGNOSIS -->
-      <section id="view-diagnosis" class="view">
-        <div class="page-header">
-          <h2>정밀 진단</h2>
-          <p>HOMA-R 기반 인슐린 저항성 · 당뇨전단계 분류</p>
-        </div>
-
-        <div class="card">
-          <h3>진단 입력</h3>
-          <form id="diagnosisForm" class="form-grid">
-            <label>측정일<input type="date" name="date" required /></label>
-            <label>공복혈당 (mg/dL)<input type="number" name="fasting" min="40" max="400" required /></label>
-            <label>공복 인슐린 (μIU/mL)<input type="number" name="insulin" min="0" max="100" step="0.01" required /></label>
-            <label>HbA1c (%)<input type="number" name="a1c" min="3" max="15" step="0.1" required /></label>
-            <label>체중 (kg)<input type="number" name="weight" min="20" max="300" step="0.1" /></label>
-            <label>허리둘레 (cm)<input type="number" name="waist" min="30" max="200" step="0.1" /></label>
-            <label class="full">메모<input type="text" name="note" placeholder="예: 건강검진 결과" /></label>
-            <button type="submit" class="primary-btn full">저장 및 계산</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>최신 분석</h3>
-            <span class="pill" id="diagnosisDatePill">—</span>
-          </div>
-          <div class="stat-row three">
-            <article class="stat-box"><span>HOMA-R</span><strong id="diagHoma">—</strong></article>
-            <article class="stat-box"><span>당뇨전단계</span><strong id="diagPrediabetes">—</strong></article>
-            <article class="stat-box"><span>대사 상태</span><strong id="diagState" class="small-strong">—</strong></article>
-          </div>
-          <div id="diagInsight" class="insight-card">입력 후 자동 해석됩니다.</div>
-          <div id="diagnosisList" class="list-stack"></div>
-        </div>
-      </section>
-
-      <!-- GLUCOSE -->
-      <section id="view-glucose" class="view">
-        <div class="page-header">
-          <h2>혈당 기록</h2>
-          <p>개인별 반응 시각화 · 위험 음식 랭킹</p>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>혈당 흐름</h3>
-            <div class="seg-group">
-              <button class="seg-btn active" data-range="7">7일</button>
-              <button class="seg-btn" data-range="14">14일</button>
-              <button class="seg-btn" data-range="30">30일</button>
-            </div>
-          </div>
-          <div class="type-tabs">
-            <button class="type-btn active" data-type="fasting">공복</button>
-            <button class="type-btn" data-type="post1">식후 1h</button>
-            <button class="type-btn" data-type="post2">식후 2h</button>
-          </div>
-          <div class="chart-wrap">
-            <svg id="glucoseChart" viewBox="0 0 360 200" aria-label="혈당 추세"></svg>
-          </div>
-          <div id="glucoseSummaryText" class="summary-text">계산 중…</div>
-        </div>
-
-        <div class="card">
-          <h3>혈당 입력</h3>
-          <form id="glucoseForm" class="form-grid">
-            <label>날짜<input type="date" name="date" required /></label>
-            <label>시간<input type="time" name="time" required /></label>
-            <label>구분
-              <select name="type">
-                <option value="fasting">공복</option>
-                <option value="post1">식후 1시간</option>
-                <option value="post2">식후 2시간</option>
-              </select>
-            </label>
-            <label>혈당 (mg/dL)<input type="number" name="value" min="40" max="400" required /></label>
-            <label class="full">관련 음식<input type="text" name="food" placeholder="예: 현미밥, 냉면" /></label>
-            <label class="full">메모<input type="text" name="note" placeholder="예: 식후 걷기, 수면 부족" /></label>
-            <button type="submit" class="primary-btn full">혈당 저장</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>위험 음식 랭킹</h3>
-            <span class="pill">개인화</span>
-          </div>
-          <div id="riskFoodList" class="list-stack"></div>
-        </div>
-      </section>
-
-      <!-- DIET -->
-      <section id="view-diet" class="view">
-        <div class="page-header">
-          <h2>전략 식단</h2>
-          <p>거꾸로 식사법 · GI 대안으로 스파이크 억제</p>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>거꾸로 식사 타이머</h3>
-            <span class="pill stage-pill" id="timerStage">채소</span>
-          </div>
-          <div class="timer-block">
-            <div class="timer-display" id="timerDisplay">05:00</div>
-            <div class="timer-guide" id="timerGuide">채소 5분부터 시작하세요.</div>
-          </div>
-          <div class="btn-row">
-            <button id="timerStartBtn" class="primary-btn">시작</button>
-            <button id="timerNextBtn" class="secondary-btn">다음 단계</button>
-            <button id="timerResetBtn" class="ghost-btn">리셋</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>식사 체크</h3>
-          <form id="dietForm" class="form-grid">
-            <label>날짜<input type="date" name="date" required /></label>
-            <label>식사
-              <select name="mealType"><option>아침</option><option>점심</option><option>저녁</option><option>간식</option></select>
-            </label>
-            <label class="checkbox-row full"><input type="checkbox" name="reverseMeal" /> 거꾸로 식사법을 지켰어요</label>
-            <label class="checkbox-row full"><input type="checkbox" name="chopsticksOnly" /> 젓가락 위주로 먹었어요</label>
-            <label>탄수화물<input type="text" name="carbFood" placeholder="예: 백미, 통밀빵" /></label>
-            <label>GI 대안<input type="text" name="giSwap" placeholder="예: 백미 → 현미" /></label>
-            <label class="full">메모<input type="text" name="note" placeholder="예: 액상과당 없이 완료" /></label>
-            <button type="submit" class="primary-btn full">식사 저장</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>GI 대안</h3>
-            <span class="pill">빠른 선택</span>
-          </div>
-          <div id="giSwapList" class="chip-grid"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>최근 식사</h3>
-            <span class="pill" id="dietScorePill">0점</span>
-          </div>
-          <div id="dietList" class="list-stack"></div>
-        </div>
-      </section>
-
-      <!-- EXERCISE -->
-      <section id="view-exercise" class="view">
-        <div class="page-header">
-          <h2>Bio-Hack 운동</h2>
-          <p>식후 골든타임 · GLUT4 활성화 · 48시간 법칙</p>
-        </div>
-
-        <div class="stat-row three card">
-          <article class="stat-box"><span>주간 유산소</span><strong id="exerciseAerobic">0분</strong></article>
-          <article class="stat-box"><span>하체 근력</span><strong id="exerciseStrength">0회</strong></article>
-          <article class="stat-box"><span>운동 공백</span><strong id="exerciseGap">0일</strong></article>
-        </div>
-
-        <div class="card">
-          <h3>운동 입력</h3>
-          <form id="exerciseForm" class="form-grid">
-            <label>날짜<input type="date" name="date" required /></label>
-            <label>종류
-              <select name="kind">
-                <option value="walking">식후 걷기</option>
-                <option value="squat">스쿼트</option>
-                <option value="lunge">런지</option>
-                <option value="cardio">유산소</option>
-              </select>
-            </label>
-            <label>시간 (분)<input type="number" name="minutes" min="0" max="300" required /></label>
-            <label>강도
-              <select name="intensity"><option>가벼움</option><option>중강도</option><option>강함</option></select>
-            </label>
-            <label class="checkbox-row full"><input type="checkbox" name="goldenTime" /> 식사 후 30분 안에 시작했어요</label>
-            <label class="full">메모<input type="text" name="note" /></label>
-            <button type="submit" class="primary-btn full">운동 저장</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>식후 골든타임</h3>
-            <span class="pill" id="goldenAlarmStatus">대기</span>
-          </div>
-          <div class="inline-field-row">
-            <label class="inline-field">식사 종료 <input type="time" id="mealEndTime" /></label>
-            <button id="goldenAlarmBtn" class="secondary-btn">계산</button>
-          </div>
-          <div id="goldenAlarmText" class="summary-text">식사 종료 시간을 입력하면 추천 시간이 나옵니다.</div>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>48시간 법칙</h3>
-            <span class="pill warn" id="gapPill">정상</span>
-          </div>
-          <div id="gapMessage" class="insight-card">연속 2일 이상 운동 공백이 생기지 않도록 유지하세요.</div>
-        </div>
-
-        <div class="card"><div id="exerciseList" class="list-stack"></div></div>
-      </section>
-
-      <!-- HORMONE -->
-      <section id="view-hormone" class="view">
-        <div class="page-header">
-          <h2>호르몬 관리</h2>
-          <p>수면 · 스트레스 · 코르티솔 조절</p>
-        </div>
-
-        <div class="card">
-          <h3>생활 로그</h3>
-          <form id="hormoneForm" class="form-grid">
-            <label>날짜<input type="date" name="date" required /></label>
-            <label>수면 (시간)<input type="number" name="sleep" min="0" max="24" step="0.5" required /></label>
-            <label>스트레스 (1~5)<input type="number" name="stress" min="1" max="5" required /></label>
-            <label>명상/호흡 (분)<input type="number" name="meditation" min="0" max="180" required /></label>
-            <label class="checkbox-row full"><input type="checkbox" name="sevenHours" /> 7시간 이상 수면</label>
-            <label class="checkbox-row full"><input type="checkbox" name="caffeineCut" /> 늦은 카페인 줄임</label>
-            <button type="submit" class="primary-btn full">로그 저장</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>최근 상태</h3>
-            <span class="pill" id="hormonePill">분석중</span>
-          </div>
-          <div class="stat-row three">
-            <article class="stat-box"><span>평균 수면</span><strong id="avgSleep">—</strong></article>
-            <article class="stat-box"><span>평균 스트레스</span><strong id="avgStress">—</strong></article>
-            <article class="stat-box"><span>명상</span><strong id="avgMeditation">—</strong></article>
-          </div>
-          <div id="hormoneInsights" class="insight-stack"></div>
-        </div>
-      </section>
-
-      <!-- ROADMAP -->
-      <section id="view-roadmap" class="view">
-        <div class="page-header">
-          <h2>12주 로드맵</h2>
-          <p>단계별 목표를 따라가며 대사를 재설계합니다.</p>
-        </div>
-
-        <div class="card">
-          <div class="section-title-row">
-            <h3>진행 현황</h3>
-            <span class="pill" id="roadmapWeekPill">1주차</span>
-          </div>
-          <label class="week-label">현재 주차
-            <input id="weekRange" type="range" min="1" max="12" value="1" />
-          </label>
-          <div class="progress-bar"><div id="roadmapProgressFill"></div></div>
-          <div id="roadmapSummary" class="insight-card"></div>
-        </div>
-
-        <div class="phase-grid" id="phaseGrid"></div>
-      </section>
-
-    </main>
-
-    <!-- BOTTOM NAV (5 items) -->
-    <nav class="bottom-nav">
-      <button class="nav-btn active" data-nav="home">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label">홈</span>
+    <header class="app-header">
+      <div class="header-left">
+        <div class="eyebrow">METABOLIC HUB</div>
+        <h1>Metabolic Reset</h1>
+      </div>
+      <button id="todayMissionBtn" class="icon-btn mission-badge">
+        <span class="badge-dot" id="missionDotBadge"></span>
+        🎯 오늘 미션
       </button>
-      <button class="nav-btn" data-nav="diagnosis">
-        <span class="nav-icon">🧪</span>
-        <span class="nav-label">진단</span>
+    </header>
+
+    <!-- Hero Score -->
+    <article class="hero-score-card">
+      <div class="score-left">
+        <div class="score-label-row">
+          <span class="status-dot" id="statusDot"></span>
+          <span class="score-label" id="statusLabel">대사 유연성 구역</span>
+        </div>
+        <div class="score-number" id="metabolicScore">82</div>
+        <div class="score-sub" id="metabolicSummary">최근 기록 기준 안정적인 흐름입니다.</div>
+        <div class="score-bar">
+          <div class="score-bar-fill" id="rangeFill"></div>
+          <div class="score-bar-labels">
+            <span>위험</span>
+            <span>회복</span>
+          </div>
+        </div>
+      </div>
+      <div class="score-right">
+        <div class="quick-stat">
+          <span class="qs-label">공복혈당</span>
+          <strong class="qs-value" id="homeFasting">—</strong>
+        </div>
+        <div class="quick-stat">
+          <span class="qs-label">HOMA-R</span>
+          <strong class="qs-value" id="homeHoma">—</strong>
+        </div>
+        <div class="quick-stat">
+          <span class="qs-label">운동 공백</span>
+          <strong class="qs-value" id="homeExerciseGap">0일</strong>
+        </div>
+        <div class="quick-stat">
+          <span class="qs-label">위험 음식</span>
+          <strong class="qs-value small" id="homeRiskFood">—</strong>
+        </div>
+      </div>
+    </article>
+
+    <!-- Today Mission Card -->
+    <article class="mission-card">
+      <div class="mission-top">
+        <div>
+          <span class="mission-phase" id="phasePill">Phase 1</span>
+          <strong class="mission-title" id="todayMissionTitle">식후 15분 걷기</strong>
+        </div>
+        <span class="mission-icon">🏃</span>
+      </div>
+      <p class="mission-text" id="todayMissionText">식사 종료 후 30분 안에 15분 걷기를 완료해 보세요.</p>
+      <div class="mission-actions">
+        <button id="missionCompleteBtn" class="primary-btn">✓ 완료</button>
+        <button id="missionSkipBtn" class="ghost-btn">다음 미션 →</button>
+      </div>
+    </article>
+
+    <!-- Mini Chart -->
+    <div class="card chart-section">
+      <div class="section-title-row">
+        <h2>혈당 흐름</h2>
+        <span class="pill" id="roadmapPill">최근 12회</span>
+      </div>
+      <div class="chart-wrap">
+        <svg id="roadmapChart" viewBox="0 0 360 160" aria-label="혈당 맵"></svg>
+      </div>
+    </div>
+
+    <!-- Menu Grid -->
+    <div class="menu-grid">
+      <button class="menu-card" data-nav="diagnosis">
+        <div class="menu-icon red">🧪</div>
+        <strong>정밀 진단</strong>
+        <span>HOMA-R · 위험도</span>
       </button>
-      <button class="nav-btn" data-nav="glucose">
-        <span class="nav-icon">🩸</span>
-        <span class="nav-label">혈당</span>
+      <button class="menu-card" data-nav="glucose">
+        <div class="menu-icon blue">🩸</div>
+        <strong>혈당 기록</strong>
+        <span>흐름 · 스파이크</span>
       </button>
-      <button class="nav-btn" data-nav="exercise">
-        <span class="nav-icon">🏃</span>
-        <span class="nav-label">운동</span>
+      <button class="menu-card" data-nav="diet">
+        <div class="menu-icon green">🥗</div>
+        <strong>전략 식단</strong>
+        <span>거꾸로 식사 · GI</span>
       </button>
-      <button class="nav-btn" data-nav="roadmap">
-        <span class="nav-icon">🛣️</span>
-        <span class="nav-label">로드맵</span>
+      <button class="menu-card" data-nav="exercise">
+        <div class="menu-icon orange">🏃</div>
+        <strong>운동</strong>
+        <span>골든타임 · GLUT4</span>
       </button>
-    </nav>
+      <button class="menu-card" data-nav="hormone">
+        <div class="menu-icon violet">🧠</div>
+        <strong>호르몬</strong>
+        <span>수면 · 스트레스</span>
+      </button>
+      <button class="menu-card" data-nav="roadmap">
+        <div class="menu-icon teal">🛣️</div>
+        <strong>12주 로드맵</strong>
+        <span>Phase 진행률</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- DIAGNOSIS -->
+  <section id="view-diagnosis" class="view">
+    <div class="page-header">
+      <h2>정밀 진단</h2>
+      <p>HOMA-R 기반 인슐린 저항성 · 당뇨전단계 분류</p>
+    </div>
+
+    <div class="card">
+      <h3>진단 입력</h3>
+      <form id="diagnosisForm" class="form-grid">
+        <label>측정일<input type="date" name="date" required /></label>
+        <label>공복혈당 (mg/dL)<input type="number" name="fasting" min="40" max="400" required /></label>
+        <label>공복 인슐린 (μIU/mL)<input type="number" name="insulin" min="0" max="100" step="0.01" required /></label>
+        <label>HbA1c (%)<input type="number" name="a1c" min="3" max="15" step="0.1" required /></label>
+        <label>체중 (kg)<input type="number" name="weight" min="20" max="300" step="0.1" /></label>
+        <label>허리둘레 (cm)<input type="number" name="waist" min="30" max="200" step="0.1" /></label>
+        <label class="full">메모<input type="text" name="note" placeholder="예: 건강검진 결과" /></label>
+        <button type="submit" class="primary-btn full">저장 및 계산</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>최신 분석</h3>
+        <span class="pill" id="diagnosisDatePill">—</span>
+      </div>
+      <div class="stat-row three">
+        <article class="stat-box"><span>HOMA-R</span><strong id="diagHoma">—</strong></article>
+        <article class="stat-box"><span>당뇨전단계</span><strong id="diagPrediabetes">—</strong></article>
+        <article class="stat-box"><span>대사 상태</span><strong id="diagState" class="small-strong">—</strong></article>
+      </div>
+      <div id="diagInsight" class="insight-card">입력 후 자동 해석됩니다.</div>
+      <div id="diagnosisList" class="list-stack"></div>
+    </div>
+  </section>
+
+  <!-- GLUCOSE -->
+  <section id="view-glucose" class="view">
+    <div class="page-header">
+      <h2>혈당 기록</h2>
+      <p>개인별 반응 시각화 · 위험 음식 랭킹</p>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>혈당 흐름</h3>
+        <div class="seg-group">
+          <button class="seg-btn active" data-range="7">7일</button>
+          <button class="seg-btn" data-range="14">14일</button>
+          <button class="seg-btn" data-range="30">30일</button>
+        </div>
+      </div>
+      <div class="type-tabs">
+        <button class="type-btn active" data-type="fasting">공복</button>
+        <button class="type-btn" data-type="post1">식후 1h</button>
+        <button class="type-btn" data-type="post2">식후 2h</button>
+      </div>
+      <div class="chart-wrap">
+        <svg id="glucoseChart" viewBox="0 0 360 200" aria-label="혈당 추세"></svg>
+      </div>
+      <div id="glucoseSummaryText" class="summary-text">계산 중…</div>
+    </div>
+
+    <div class="card">
+      <h3>혈당 입력</h3>
+      <form id="glucoseForm" class="form-grid">
+        <label>날짜<input type="date" name="date" required /></label>
+        <label>시간<input type="time" name="time" required /></label>
+        <label>구분
+          <select name="type">
+            <option value="fasting">공복</option>
+            <option value="post1">식후 1시간</option>
+            <option value="post2">식후 2시간</option>
+          </select>
+        </label>
+        <label>혈당 (mg/dL)<input type="number" name="value" min="40" max="400" required /></label>
+        <label class="full">관련 음식<input type="text" name="food" placeholder="예: 현미밥, 냉면" /></label>
+        <label class="full">메모<input type="text" name="note" placeholder="예: 식후 걷기, 수면 부족" /></label>
+        <button type="submit" class="primary-btn full">혈당 저장</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>위험 음식 랭킹</h3>
+        <span class="pill">개인화</span>
+      </div>
+      <div id="riskFoodList" class="list-stack"></div>
+    </div>
+  </section>
+
+  <!-- DIET -->
+  <section id="view-diet" class="view">
+    <div class="page-header">
+      <h2>전략 식단</h2>
+      <p>거꾸로 식사법 · GI 대안으로 스파이크 억제</p>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>거꾸로 식사 타이머</h3>
+        <span class="pill stage-pill" id="timerStage">채소</span>
+      </div>
+      <div class="timer-block">
+        <div class="timer-display" id="timerDisplay">05:00</div>
+        <div class="timer-guide" id="timerGuide">채소 5분부터 시작하세요.</div>
+      </div>
+      <div class="btn-row">
+        <button id="timerStartBtn" class="primary-btn">시작</button>
+        <button id="timerNextBtn" class="secondary-btn">다음 단계</button>
+        <button id="timerResetBtn" class="ghost-btn">리셋</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>식사 체크</h3>
+      <form id="dietForm" class="form-grid">
+        <label>날짜<input type="date" name="date" required /></label>
+        <label>식사
+          <select name="mealType"><option>아침</option><option>점심</option><option>저녁</option><option>간식</option></select>
+        </label>
+        <label class="checkbox-row full"><input type="checkbox" name="reverseMeal" /> 거꾸로 식사법을 지켰어요</label>
+        <label class="checkbox-row full"><input type="checkbox" name="chopsticksOnly" /> 젓가락 위주로 먹었어요</label>
+        <label>탄수화물<input type="text" name="carbFood" placeholder="예: 백미, 통밀빵" /></label>
+        <label>GI 대안<input type="text" name="giSwap" placeholder="예: 백미 → 현미" /></label>
+        <label class="full">메모<input type="text" name="note" placeholder="예: 액상과당 없이 완료" /></label>
+        <button type="submit" class="primary-btn full">식사 저장</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>GI 대안</h3>
+        <span class="pill">빠른 선택</span>
+      </div>
+      <div id="giSwapList" class="chip-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>최근 식사</h3>
+        <span class="pill" id="dietScorePill">0점</span>
+      </div>
+      <div id="dietList" class="list-stack"></div>
+    </div>
+  </section>
+
+  <!-- EXERCISE -->
+  <section id="view-exercise" class="view">
+    <div class="page-header">
+      <h2>Bio-Hack 운동</h2>
+      <p>식후 골든타임 · GLUT4 활성화 · 48시간 법칙</p>
+    </div>
+
+    <div class="stat-row three card">
+      <article class="stat-box"><span>주간 유산소</span><strong id="exerciseAerobic">0분</strong></article>
+      <article class="stat-box"><span>하체 근력</span><strong id="exerciseStrength">0회</strong></article>
+      <article class="stat-box"><span>운동 공백</span><strong id="exerciseGap">0일</strong></article>
+    </div>
+
+    <div class="card">
+      <h3>운동 입력</h3>
+      <form id="exerciseForm" class="form-grid">
+        <label>날짜<input type="date" name="date" required /></label>
+        <label>종류
+          <select name="kind">
+            <option value="walking">식후 걷기</option>
+            <option value="squat">스쿼트</option>
+            <option value="lunge">런지</option>
+            <option value="cardio">유산소</option>
+          </select>
+        </label>
+        <label>시간 (분)<input type="number" name="minutes" min="0" max="300" required /></label>
+        <label>강도
+          <select name="intensity"><option>가벼움</option><option>중강도</option><option>강함</option></select>
+        </label>
+        <label class="checkbox-row full"><input type="checkbox" name="goldenTime" /> 식사 후 30분 안에 시작했어요</label>
+        <label class="full">메모<input type="text" name="note" /></label>
+        <button type="submit" class="primary-btn full">운동 저장</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>식후 골든타임</h3>
+        <span class="pill" id="goldenAlarmStatus">대기</span>
+      </div>
+      <div class="inline-field-row">
+        <label class="inline-field">식사 종료 <input type="time" id="mealEndTime" /></label>
+        <button id="goldenAlarmBtn" class="secondary-btn">계산</button>
+      </div>
+      <div id="goldenAlarmText" class="summary-text">식사 종료 시간을 입력하면 추천 시간이 나옵니다.</div>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>48시간 법칙</h3>
+        <span class="pill warn" id="gapPill">정상</span>
+      </div>
+      <div id="gapMessage" class="insight-card">연속 2일 이상 운동 공백이 생기지 않도록 유지하세요.</div>
+    </div>
+
+    <div class="card"><div id="exerciseList" class="list-stack"></div></div>
+  </section>
+
+  <!-- HORMONE -->
+  <section id="view-hormone" class="view">
+    <div class="page-header">
+      <h2>호르몬 관리</h2>
+      <p>수면 · 스트레스 · 코르티솔 조절</p>
+    </div>
+
+    <div class="card">
+      <h3>생활 로그</h3>
+      <form id="hormoneForm" class="form-grid">
+        <label>날짜<input type="date" name="date" required /></label>
+        <label>수면 (시간)<input type="number" name="sleep" min="0" max="24" step="0.5" required /></label>
+        <label>스트레스 (1~5)<input type="number" name="stress" min="1" max="5" required /></label>
+        <label>명상/호흡 (분)<input type="number" name="meditation" min="0" max="180" required /></label>
+        <label class="checkbox-row full"><input type="checkbox" name="sevenHours" /> 7시간 이상 수면</label>
+        <label class="checkbox-row full"><input type="checkbox" name="caffeineCut" /> 늦은 카페인 줄임</label>
+        <button type="submit" class="primary-btn full">로그 저장</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>최근 상태</h3>
+        <span class="pill" id="hormonePill">분석중</span>
+      </div>
+      <div class="stat-row three">
+        <article class="stat-box"><span>평균 수면</span><strong id="avgSleep">—</strong></article>
+        <article class="stat-box"><span>평균 스트레스</span><strong id="avgStress">—</strong></article>
+        <article class="stat-box"><span>명상</span><strong id="avgMeditation">—</strong></article>
+      </div>
+      <div id="hormoneInsights" class="insight-stack"></div>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section id="view-roadmap" class="view">
+    <div class="page-header">
+      <h2>12주 로드맵</h2>
+      <p>단계별 목표를 따라가며 대사를 재설계합니다.</p>
+    </div>
+
+    <div class="card">
+      <div class="section-title-row">
+        <h3>진행 현황</h3>
+        <span class="pill" id="roadmapWeekPill">1주차</span>
+      </div>
+      <label class="week-label">현재 주차
+        <input id="weekRange" type="range" min="1" max="12" value="1" />
+      </label>
+      <div class="progress-bar"><div id="roadmapProgressFill"></div></div>
+      <div id="roadmapSummary" class="insight-card"></div>
+    </div>
+
+    <div class="phase-grid" id="phaseGrid"></div>
+  </section>
+
+</main>
+
+<!-- BOTTOM NAV (5 items) -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-nav="home">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">홈</span>
+  </button>
+  <button class="nav-btn" data-nav="diagnosis">
+    <span class="nav-icon">🧪</span>
+    <span class="nav-label">진단</span>
+  </button>
+  <button class="nav-btn" data-nav="glucose">
+    <span class="nav-icon">🩸</span>
+    <span class="nav-label">혈당</span>
+  </button>
+  <button class="nav-btn" data-nav="exercise">
+    <span class="nav-icon">🏃</span>
+    <span class="nav-label">운동</span>
+  </button>
+  <button class="nav-btn" data-nav="roadmap">
+    <span class="nav-icon">🛣️</span>
+    <span class="nav-label">로드맵</span>
+  </button>
+</nav>
+```
 
   </div>
-  <script src="app.js"></script>
+
+<script>
+const STORAGE_KEY = 'metabolic-reset-v3';
+const today = new Date();
+const nowDate = new Date().toISOString().slice(0,10);
+
+const defaultData = {
+  diagnosis: [
+    { date: '2026-04-10', fasting: 102, insulin: 11.8, a1c: 5.8, weight: 76.4, waist: 91, note: '초기 기준값' }
+  ],
+  glucose: [
+    { date: '2026-04-06', time: '07:20', type: 'fasting', value: 101, food: '', note: '수면 6시간' },
+    { date: '2026-04-07', time: '07:10', type: 'fasting', value: 97, food: '', note: '저녁 탄수 적음' },
+    { date: '2026-04-08', time: '13:10', type: 'post1', value: 144, food: '냉면', note: '걷기 없음' },
+    { date: '2026-04-08', time: '14:10', type: 'post2', value: 116, food: '냉면', note: '' },
+    { date: '2026-04-09', time: '12:55', type: 'post1', value: 128, food: '현미밥', note: '식후 15분 걷기' },
+    { date: '2026-04-09', time: '13:55', type: 'post2', value: 108, food: '현미밥', note: '' },
+    { date: '2026-04-10', time: '07:15', type: 'fasting', value: 95, food: '', note: '아침 공복' }
+  ],
+  diet: [
+    { date: '2026-04-10', mealType: '점심', reverseMeal: true, chopsticksOnly: true, carbFood: '백미', giSwap: '백미 → 현미', note: '액상과당 음료 없음' }
+  ],
+  exercise: [
+    { date: '2026-04-08', kind: 'squat', minutes: 18, intensity: '중강도', goldenTime: false, note: '하체 근력' },
+    { date: '2026-04-09', kind: 'walking', minutes: 20, intensity: '가벼움', goldenTime: true, note: '점심 후 걷기' }
+  ],
+  hormone: [
+    { date: '2026-04-09', sleep: 7.5, stress: 2, meditation: 10, sevenHours: true, caffeineCut: true },
+    { date: '2026-04-10', sleep: 6.5, stress: 3, meditation: 5, sevenHours: false, caffeineCut: true }
+  ],
+  missionIndex: 0,
+  missionDoneToday: false,
+  week: 1
+};
+
+const missions = [
+  { title: '식후 15분 걷기', text: '식사 종료 후 30분 안에 15분 걷기를 완료해 보세요.', phase: 'Phase 1', icon: '🏃' },
+  { title: '거꾸로 식사법', text: '채소 → 단백질 → 탄수화물 순서를 한 끼라도 실천해 보세요.', phase: 'Phase 1', icon: '🥗' },
+  { title: '하체 근력 루틴', text: '스쿼트 또는 런지를 10분 이상 수행해 GLUT4 자극을 주세요.', phase: 'Phase 2', icon: '💪' },
+  { title: '수면 7시간', text: '오늘은 7시간 이상 수면 확보를 목표로 해보세요.', phase: 'Phase 3', icon: '😴' }
+];
+
+const giSwaps = [
+  ['백미', '현미'], ['식빵', '통밀빵'], ['시리얼', '오트밀'],
+  ['떡', '삶은 고구마'], ['설탕음료', '무가당 차'], ['과자', '견과류']
+];
+
+const roadmapPhases = [
+  { phase: 'Phase 1', weeks: '1~4주', goal: '기반 재설정', actions: '거꾸로 식사 적응 · 액상과당 완전 차단' },
+  { phase: 'Phase 2', weeks: '5~8주', goal: '집중 연소', actions: '하체 저항성 운동 루틴화 · 초기 체중 3% 감량' },
+  { phase: 'Phase 3', weeks: '9~12주', goal: '대사 안착', actions: '목표 체중 5~7% 달성 · 대사 유연성 지표 정상화' }
+];
+
+let state = load();
+let currentView = 'home';
+let currentRange = 7;
+let currentType = 'fasting';
+let timerInterval = null;
+let timerSeconds = 300;
+let timerStageIndex = 0;
+const timerStages = [
+  { name: '채소', seconds: 300, guide: '채소 5분부터 시작하세요.' },
+  { name: '단백질', seconds: 300, guide: '단백질 5분 단계입니다.' },
+  { name: '탄수화물', seconds: 600, guide: '이제 탄수화물을 천천히 드세요.' }
+];
+
+function load() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return structuredClone(defaultData);
+  try { return { ...structuredClone(defaultData), ...JSON.parse(raw) }; }
+  catch { return structuredClone(defaultData); }
+}
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function qs(id) { return document.getElementById(id); }
+function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function sortDesc(items, key='date') {
+  return [...items].sort((a,b) => (`${b[key]}${b.time||''}`).localeCompare(`${a[key]}${a.time||''}`));
+}
+function recentWithinDays(items, days) {
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - (days - 1));
+  return items.filter(item => new Date(item.date) >= cutoff);
+}
+function calculateHoma(fasting, insulin) {
+  return fasting && insulin ? (Number(fasting) * Number(insulin)) / 405 : 0;
+}
+function classifyPrediabetes(fasting, a1c) {
+  if (Number(a1c) >= 6.5 || Number(fasting) >= 126) return '당뇨병 범위';
+  if ((Number(a1c) >= 5.7 && Number(a1c) <= 6.4) || (Number(fasting) >= 100 && Number(fasting) <= 125)) return '당뇨전단계';
+  return '정상 범위';
+}
+function metabolicState(score) {
+  if (score >= 75) return '대사 유연성 회복 구간';
+  if (score >= 50) return '전환 구간';
+  return '혈당 스파이크 경계 구간';
+}
+function getMetabolicScore() {
+  const latestDx = sortDesc(state.diagnosis)[0];
+  const fastingAvg = avg(recentWithinDays(state.glucose.filter(x=>x.type==='fasting'), 7).map(x=>x.value)) || (latestDx?.fasting || 100);
+  const postAvg = avg(recentWithinDays(state.glucose.filter(x=>x.type!=='fasting'), 7).map(x=>x.value)) || 130;
+  const sleepAvg = avg(recentWithinDays(state.hormone, 7).map(x=>x.sleep)) || 7;
+  const exerciseMins = recentWithinDays(state.exercise, 7).reduce((a,b)=>a+Number(b.minutes),0);
+  let score = 100;
+  score -= Math.max(0, fastingAvg - 90) * 0.9;
+  score -= Math.max(0, postAvg - 120) * 0.45;
+  score += Math.min(10, (sleepAvg - 6) * 4);
+  score += Math.min(10, exerciseMins / 20);
+  return Math.max(15, Math.min(98, Math.round(score)));
+}
+function getExerciseGap() {
+  const latest = sortDesc(state.exercise)[0];
+  if (!latest) return 99;
+  return Math.floor((today - new Date(latest.date)) / (1000*60*60*24));
+}
+function getRiskFoods() {
+  const foods = {};
+  state.glucose.filter(x => x.food && x.type !== 'fasting').forEach(x => {
+    if (!foods[x.food]) foods[x.food] = [];
+    foods[x.food].push(Number(x.value));
+  });
+  return Object.entries(foods)
+    .map(([food, vals]) => ({ food, avg: avg(vals), count: vals.length }))
+    .sort((a,b) => b.avg - a.avg);
+}
+
+function renderView(view) {
+  currentView = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  qs(`view-${view}`).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.nav === view)
+  );
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setDefaults() {
+  document.querySelectorAll('input[type="date"]').forEach(i => { if (!i.value) i.value = nowDate; });
+  const glucoseTime = document.querySelector('#glucoseForm input[name="time"]');
+  if (glucoseTime && !glucoseTime.value) {
+    glucoseTime.value = `${String(today.getHours()).padStart(2,'0')}:${String(today.getMinutes()).padStart(2,'0')}`;
+  }
+}
+
+function renderDashboard() {
+  const score = getMetabolicScore();
+  qs('metabolicScore').textContent = score;
+  qs('rangeFill').style.width = `${score}%`;
+  qs('statusLabel').textContent = score >= 75 ? '대사 유연성 구역' : score >= 50 ? '전환 구역' : '스파이크 경계';
+  const dot = qs('statusDot');
+  dot.style.background = score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
+  dot.style.boxShadow = `0 0 10px ${score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444'}`;
+  qs('metabolicSummary').textContent = metabolicState(score);
+
+  const mission = missions[state.missionIndex % missions.length];
+  qs('todayMissionTitle').textContent = mission.title;
+  qs('todayMissionText').textContent = mission.text;
+  qs('phasePill').textContent = mission.phase + (state.missionDoneToday ? ' · ✓ 완료' : '');
+  document.querySelector('.mission-icon').textContent = mission.icon;
+
+  // Show badge dot if mission not done
+  const badgeDot = qs('missionDotBadge');
+  if (badgeDot) badgeDot.classList.toggle('visible', !state.missionDoneToday);
+
+  const fastingList = sortDesc(state.glucose.filter(x=>x.type==='fasting'));
+  const latestDx = sortDesc(state.diagnosis)[0];
+  const homa = latestDx ? calculateHoma(latestDx.fasting, latestDx.insulin) : 0;
+  const gap = getExerciseGap();
+  const riskFood = getRiskFoods()[0];
+
+  qs('homeFasting').textContent = fastingList[0] ? `${fastingList[0].value}` : '—';
+  qs('homeHoma').textContent = homa ? homa.toFixed(2) : '—';
+  qs('homeExerciseGap').textContent = `${gap}일`;
+  qs('homeRiskFood').textContent = riskFood?.food || '데이터 필요';
+
+  renderHomeChart();
+}
+
+function renderHomeChart() {
+  const svg = qs('roadmapChart');
+  const items = sortDesc(state.glucose).slice(0, 12).reverse();
+  if (!items.length) { svg.innerHTML = ''; return; }
+  const w = 360, h = 160, px = 20, py = 16;
+  const values = items.map(x => Number(x.value));
+  const min = Math.max(60, Math.min(...values) - 10);
+  const max = Math.max(180, Math.max(...values) + 10);
+  const stepX = (w - px * 2) / Math.max(1, items.length - 1);
+  const toY = v => h - py - ((v - min) / (max - min)) * (h - py * 2);
+  const pts = items.map((item, i) => [px + i * stepX, toY(item.value), item]);
+  const polyline = pts.map(([x,y]) => `${x},${y}`).join(' ');
+  const dots = pts.map(([x,y,item]) => {
+    const col = item.value >= 140 ? '#ef4444' : item.value >= 110 ? '#f59e0b' : '#22c55e';
+    return `<circle cx="${x}" cy="${y}" r="4.5" fill="${col}" opacity="0.9"/>`;
+  }).join('');
+  // Filled area
+  const area = `${px},${h - py} ${pts.map(([x,y])=>`${x},${y}`).join(' ')} ${px + (items.length-1)*stepX},${h - py}`;
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.15"/>
+        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${area}" fill="url(#areaGrad)"/>
+    <polyline fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linejoin="round" points="${polyline}"/>
+    ${dots}
+    <text x="${px}" y="14" fill="#94a3b8" font-size="11" font-family="DM Sans,sans-serif">최근 혈당 흐름</text>`;
+}
+
+function renderDiagnosis() {
+  const latest = sortDesc(state.diagnosis)[0];
+  if (!latest) return;
+  const homa = calculateHoma(latest.fasting, latest.insulin);
+  const risk = classifyPrediabetes(latest.fasting, latest.a1c);
+  const score = getMetabolicScore();
+  qs('diagnosisDatePill').textContent = latest.date;
+  qs('diagHoma').textContent = homa.toFixed(2);
+  qs('diagPrediabetes').textContent = risk;
+  qs('diagState').textContent = metabolicState(score);
+  qs('diagInsight').textContent = homa >= 2.5
+    ? `HOMA-R ${homa.toFixed(2)}로 인슐린 저항성 관리가 필요합니다. 식후 걷기와 하체 근력 루틴을 우선 강화하세요.`
+    : `HOMA-R ${homa.toFixed(2)}로 비교적 양호합니다. 식후 스파이크와 수면 패턴도 같이 관리하면 좋습니다.`;
+  qs('diagnosisList').innerHTML = sortDesc(state.diagnosis).map(item => {
+    const h = calculateHoma(item.fasting, item.insulin);
+    return `<div class="list-item">
+      <div class="list-item-top"><strong>${item.date}</strong><small>HOMA-R ${h.toFixed(2)}</small></div>
+      <div style="font-size:14px;color:#8ba0bd">공복 ${item.fasting} · 인슐린 ${item.insulin} · HbA1c ${item.a1c}%</div>
+      ${item.note ? `<small>${item.note}</small>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderGlucose() {
+  const source = recentWithinDays(state.glucose.filter(x=>x.type===currentType), currentRange)
+    .sort((a,b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+  const svg = qs('glucoseChart');
+  const summaryEl = qs('glucoseSummaryText');
+  if (!source.length) {
+    svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#6a85a4" font-size="14">기록이 없습니다</text>';
+    summaryEl.textContent = '기록이 부족합니다.';
+    qs('riskFoodList').innerHTML = '<div class="list-item"><strong>아직 음식별 데이터가 부족합니다.</strong></div>';
+    return;
+  }
+  const w=360, h=200, px=28, py=24;
+  const values = source.map(x=>Number(x.value));
+  const min = Math.max(60, Math.min(...values, 90) - 10);
+  const max = Math.max(...values, 160) + 10;
+  const stepX = (w - px*2) / Math.max(1, source.length - 1);
+  const target = currentType==='fasting' ? 100 : currentType==='post1' ? 140 : 120;
+  const toY = v => h - py - ((v - min) / (max - min)) * (h - py*2);
+  const targetY = toY(target);
+  const pts = source.map((item,i) => [px + i * stepX, toY(item.value), item]);
+  const polyline = pts.map(([x,y]) => `${x},${y}`).join(' ');
+  const area = `${px},${h-py} ${pts.map(([x,y])=>`${x},${y}`).join(' ')} ${px+(source.length-1)*stepX},${h-py}`;
+  const dots = pts.map(([x,y,item]) =>
+    `<circle cx="${x}" cy="${y}" r="5" fill="${item.value > target ? '#ef4444' : '#22c55e'}"/>`
+  ).join('');
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="gGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#22c55e" stop-opacity="0.12"/>
+        <stop offset="100%" stop-color="#22c55e" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <line x1="${px}" y1="${targetY}" x2="${w-px}" y2="${targetY}" stroke="#f59e0b" stroke-dasharray="5 5" stroke-opacity="0.6"/>
+    <polygon points="${area}" fill="url(#gGrad)"/>
+    <polyline fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linejoin="round" points="${polyline}"/>
+    ${dots}
+    <text x="${px}" y="18" fill="#94a3b8" font-size="11" font-family="DM Sans,sans-serif">${currentType==='fasting'?'공복':'식후'} ${currentRange}일</text>
+    <text x="${w-px}" y="${targetY-6}" text-anchor="end" fill="#f59e0b" font-size="11" font-family="DM Sans,sans-serif">기준 ${target}</text>`;
+  const average = avg(values);
+  const maxVal = Math.max(...values);
+  summaryEl.textContent = `평균 ${average.toFixed(1)} mg/dL · 최고 ${maxVal} mg/dL · 기준 ${target} mg/dL`;
+  qs('riskFoodList').innerHTML = getRiskFoods().map(item =>
+    `<div class="list-item">
+      <div class="list-item-top"><strong>${item.food}</strong><small>평균 ${item.avg.toFixed(1)} mg/dL</small></div>
+      <small>${item.count}회 기록</small>
+    </div>`
+  ).join('') || '<div class="list-item"><strong>아직 음식별 데이터가 부족합니다.</strong></div>';
+}
+
+function renderDiet() {
+  qs('giSwapList').innerHTML = giSwaps.map(([from,to]) =>
+    `<div class="chip"><span>${from}</span><strong>→ ${to}</strong></div>`
+  ).join('');
+  const latest = sortDesc(state.diet).slice(0,8);
+  const score = latest.reduce((s,x) => s + (x.reverseMeal?2:0) + (x.chopsticksOnly?1:0) + (x.giSwap?1:0), 0);
+  qs('dietScorePill').textContent = `${score}점`;
+  qs('dietList').innerHTML = latest.map(item =>
+    `<div class="list-item">
+      <div class="list-item-top"><strong>${item.date} · ${item.mealType}</strong><small>${item.giSwap || '대안 없음'}</small></div>
+      <div style="font-size:13px;color:#8ba0bd">${item.reverseMeal?'거꾸로 ✓':'—'} · ${item.chopsticksOnly?'젓가락 ✓':'—'}</div>
+      ${item.note ? `<small>${item.note}</small>` : ''}
+    </div>`
+  ).join('');
+}
+
+function renderExercise() {
+  const recent = recentWithinDays(state.exercise, 7);
+  const aerobic = recent.filter(x => ['walking','cardio'].includes(x.kind)).reduce((a,b)=>a+Number(b.minutes),0);
+  const strength = recent.filter(x => ['squat','lunge'].includes(x.kind)).length;
+  const gap = getExerciseGap();
+  qs('exerciseAerobic').textContent = `${aerobic}분`;
+  qs('exerciseStrength').textContent = `${strength}회`;
+  qs('exerciseGap').textContent = `${gap}일`;
+  qs('homeExerciseGap').textContent = `${gap}일`;
+  qs('gapPill').textContent = gap >= 2 ? '⚠ 경고' : '정상';
+  qs('gapPill').classList.toggle('warn', gap >= 2);
+  qs('gapMessage').textContent = gap >= 2
+    ? `연속 ${gap}일 공백입니다. 오늘 하체 근력 또는 식후 걷기를 넣어주세요.`
+    : '운동 공백 관리가 잘 되고 있습니다. 이 흐름을 유지하세요.';
+  const labelEx = k => ({walking:'식후 걷기', squat:'스쿼트', lunge:'런지', cardio:'유산소'})[k] || k;
+  qs('exerciseList').innerHTML = sortDesc(state.exercise).map(item =>
+    `<div class="list-item">
+      <div class="list-item-top"><strong>${item.date} · ${labelEx(item.kind)}</strong><small>${item.minutes}분</small></div>
+      <div style="font-size:13px;color:#8ba0bd">${item.intensity} · ${item.goldenTime?'🟢 골든타임':'일반'}</div>
+      ${item.note ? `<small>${item.note}</small>` : ''}
+    </div>`
+  ).join('');
+}
+
+function renderHormone() {
+  const recent = recentWithinDays(state.hormone, 7);
+  const sleepAvg = avg(recent.map(x=>x.sleep));
+  const stressAvg = avg(recent.map(x=>x.stress));
+  const medAvg = avg(recent.map(x=>x.meditation));
+  qs('avgSleep').textContent = recent.length ? `${sleepAvg.toFixed(1)}h` : '—';
+  qs('avgStress').textContent = recent.length ? stressAvg.toFixed(1) : '—';
+  qs('avgMeditation').textContent = recent.length ? `${medAvg.toFixed(0)}분` : '—';
+  qs('hormonePill').textContent = sleepAvg >= 7 && stressAvg <= 2.5 ? '안정적' : '조정 필요';
+  const insights = [];
+  if (sleepAvg && sleepAvg < 7) insights.push('최근 평균 수면이 7시간 미만입니다. 공복혈당 안정화를 위해 취침 시간을 앞당겨 보세요.');
+  if (stressAvg && stressAvg >= 3) insights.push('스트레스가 높은 편입니다. 10분 호흡 또는 명상 루틴을 고정해 두면 좋습니다.');
+  if (medAvg && medAvg < 10) insights.push('명상 루틴이 짧습니다. 최소 10분을 목표로 설정해 보세요.');
+  if (!insights.length) insights.push('수면과 스트레스 관리가 안정적입니다. 이 흐름을 유지하면 대사 회복에 유리합니다.');
+  qs('hormoneInsights').innerHTML = insights.map(t => `<div class="insight-card">${t}</div>`).join('');
+}
+
+function renderRoadmap() {
+  const week = Number(state.week || 1);
+  qs('weekRange').value = week;
+  qs('roadmapWeekPill').textContent = `${week}주차`;
+  qs('roadmapProgressFill').style.width = `${(week/12)*100}%`;
+  let phaseText = '';
+  if (week <= 4) phaseText = 'Phase 1 · 기반 재설정: 거꾸로 식사 적응, 액상과당 차단에 집중하는 시기입니다.';
+  else if (week <= 8) phaseText = 'Phase 2 · 집중 연소: 하체 저항성 운동을 루틴화하고 초기 체중 3% 감량을 노립니다.';
+  else phaseText = 'Phase 3 · 대사 안착: 목표 체중 5~7%와 대사 유연성 안정화에 집중하는 단계입니다.';
+  qs('roadmapSummary').textContent = phaseText;
+  qs('phaseGrid').innerHTML = roadmapPhases.map(phase =>
+    `<div class="card">
+      <div class="section-title-row">
+        <h3>${phase.phase}</h3>
+        <span class="pill">${phase.weeks}</span>
+      </div>
+      <div class="insight-card">
+        <strong style="font-size:15px;display:block;margin-bottom:6px">${phase.goal}</strong>
+        <span style="font-size:13px">${phase.actions}</span>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function renderAll() {
+  renderDashboard();
+  renderDiagnosis();
+  renderGlucose();
+  renderDiet();
+  renderExercise();
+  renderHormone();
+  renderRoadmap();
+  setDefaults();
+  save();
+}
+
+// ── BIND NAVIGATION ──
+document.querySelectorAll('[data-nav]').forEach(btn =>
+  btn.addEventListener('click', () => renderView(btn.dataset.nav))
+);
+
+// ── BIND FORMS ──
+qs('diagnosisForm').addEventListener('submit', e => {
+  e.preventDefault();
+  state.diagnosis.unshift(Object.fromEntries(new FormData(e.target)));
+  renderAll(); e.target.reset(); setDefaults(); renderView('diagnosis');
+});
+qs('glucoseForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const entry = Object.fromEntries(new FormData(e.target));
+  entry.value = Number(entry.value);
+  state.glucose.unshift(entry);
+  renderAll(); e.target.reset(); setDefaults(); renderView('glucose');
+});
+qs('dietForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const entry = Object.fromEntries(fd);
+  entry.reverseMeal = fd.get('reverseMeal') === 'on';
+  entry.chopsticksOnly = fd.get('chopsticksOnly') === 'on';
+  state.diet.unshift(entry);
+  renderAll(); e.target.reset(); setDefaults(); renderView('diet');
+});
+qs('exerciseForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const entry = Object.fromEntries(fd);
+  entry.minutes = Number(entry.minutes);
+  entry.goldenTime = fd.get('goldenTime') === 'on';
+  state.exercise.unshift(entry);
+  renderAll(); e.target.reset(); setDefaults(); renderView('exercise');
+});
+qs('hormoneForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const entry = Object.fromEntries(fd);
+  entry.sleep = Number(entry.sleep);
+  entry.stress = Number(entry.stress);
+  entry.meditation = Number(entry.meditation);
+  entry.sevenHours = fd.get('sevenHours') === 'on';
+  entry.caffeineCut = fd.get('caffeineCut') === 'on';
+  state.hormone.unshift(entry);
+  renderAll(); e.target.reset(); setDefaults(); renderView('hormone');
+});
+
+// ── CHART CONTROLS ──
+document.querySelectorAll('.seg-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentRange = Number(btn.dataset.range);
+  renderGlucose();
+}));
+document.querySelectorAll('.type-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentType = btn.dataset.type;
+  renderGlucose();
+}));
+
+// ── MISSION ──
+qs('missionCompleteBtn').addEventListener('click', () => {
+  state.missionDoneToday = true;
+  renderAll();
+});
+qs('missionSkipBtn').addEventListener('click', () => {
+  state.missionIndex = (state.missionIndex + 1) % missions.length;
+  state.missionDoneToday = false;
+  renderAll();
+});
+qs('todayMissionBtn').addEventListener('click', () => renderView('home'));
+
+// ── TIMER ──
+function updateTimerDisplay() {
+  const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+  const secs = String(timerSeconds % 60).padStart(2, '0');
+  qs('timerDisplay').textContent = `${mins}:${secs}`;
+  qs('timerStage').textContent = timerStages[timerStageIndex].name;
+  qs('timerGuide').textContent = timerStages[timerStageIndex].guide;
+}
+updateTimerDisplay();
+qs('timerStartBtn').addEventListener('click', () => {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (timerSeconds > 0) { timerSeconds--; }
+    else {
+      clearInterval(timerInterval);
+      qs('timerGuide').textContent = `${timerStages[timerStageIndex].name} 단계 완료!`;
+    }
+    updateTimerDisplay();
+  }, 1000);
+});
+qs('timerNextBtn').addEventListener('click', () => {
+  timerStageIndex = (timerStageIndex + 1) % timerStages.length;
+  timerSeconds = timerStages[timerStageIndex].seconds;
+  updateTimerDisplay();
+});
+qs('timerResetBtn').addEventListener('click', () => {
+  clearInterval(timerInterval);
+  timerStageIndex = 0;
+  timerSeconds = timerStages[0].seconds;
+  updateTimerDisplay();
+});
+
+// ── GOLDEN ALARM ──
+qs('goldenAlarmBtn').addEventListener('click', () => {
+  const value = qs('mealEndTime').value;
+  if (!value) { qs('goldenAlarmText').textContent = '먼저 식사 종료 시간을 입력해 주세요.'; return; }
+  const [hh, mm] = value.split(':').map(Number);
+  const total = hh * 60 + mm + 30;
+  const tH = String(Math.floor((total % (24*60)) / 60)).padStart(2,'0');
+  const tM = String(total % 60).padStart(2,'0');
+  qs('goldenAlarmStatus').textContent = '계산 완료';
+  qs('goldenAlarmText').textContent = `추천 걷기 시작: ${tH}:${tM} — 최소 15분 가볍게 걷기`;
+});
+
+// ── ROADMAP WEEK ──
+qs('weekRange').addEventListener('input', e => {
+  state.week = Number(e.target.value);
+  renderRoadmap();
+  save();
+});
+
+// ── INIT ──
+renderAll();
+renderView('home');
+</script>
+
 </body>
 </html>
