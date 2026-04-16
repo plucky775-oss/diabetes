@@ -14,13 +14,14 @@
       <section id="view-home" class="view active">
         <header class="hero-header">
           <div>
-            <p class="eyebrow">GEMMA 4 AI COACH · V7</p>
+            <p class="eyebrow">GEMMA 4 AI COACH · V8</p>
             <h1>당뇨 AI 코치</h1>
             <p class="hero-sub" id="heroDateText">혈당·HbA1c·HOMA-IR를 기록하고 Gemma4가 생활관리 포인트를 정리합니다.</p>
           </div>
           <div class="hero-actions">
             <button id="goToRecordBtn" class="pill-button" type="button">빠른 입력</button>
             <button class="pill-button ai-pill" data-nav="analysis" type="button">AI 코칭</button>
+            <button class="pill-button chat-pill" data-nav="chat" type="button">상담 챗봇</button>
           </div>
         </header>
 
@@ -376,6 +377,49 @@
           <p class="ai-disclaimer">이 코칭은 생활관리 참고용이며 진단·처방이 아닙니다. 저혈당 증상, 300mg/dL 이상 고혈당, 반복적인 이상 수치는 의료진 상담이 우선입니다.</p>
         </section>
       </section>
+      <section id="view-chat" class="view">
+        <div class="page-header">
+          <h2>상담 챗봇</h2>
+          <p>당뇨 전단계, 공복혈당, 식후혈당, HbA1c, HOMA-IR 관련 질문을 편하게 물어보세요.</p>
+        </div>
+
+        <section class="card chat-card">
+          <div class="section-head section-head-start stacked-on-mobile">
+            <div>
+              <p class="section-kicker">GEMMA 4 DIABETES CHAT</p>
+              <h3>당뇨 관리 상담</h3>
+              <p class="section-subtext">저장된 혈당·검사 수치를 함께 참고해서 생활관리 중심으로 답변합니다.</p>
+            </div>
+            <span id="chatStatus" class="status-badge status-stable">상담 대기</span>
+          </div>
+
+          <div class="quick-question-wrap" aria-label="빠른 질문">
+            <button class="quick-question" data-chat-question="공복혈당이 아침마다 높은 이유가 뭐야?" type="button">공복혈당이 왜 높아?</button>
+            <button class="quick-question" data-chat-question="식후혈당 스파이크를 낮추려면 오늘부터 뭘 하면 좋아?" type="button">식후혈당 낮추기</button>
+            <button class="quick-question" data-chat-question="HOMA-IR 수치는 어떻게 해석해야 해?" type="button">HOMA-IR 해석</button>
+            <button class="quick-question" data-chat-question="다음 혈액검사 전까지 어떤 루틴을 유지하면 좋을까?" type="button">검사 전 루틴</button>
+          </div>
+
+          <div id="chatMessages" class="chat-messages" aria-live="polite">
+            <div class="chat-bubble bot">
+              <div class="chat-role">AI 코치</div>
+              <p>안녕하세요. 당뇨 관련 수치와 생활관리 질문을 물어보세요. 진단이나 처방이 아니라 기록 기반 생활관리 조언으로 답변합니다.</p>
+            </div>
+          </div>
+
+          <form id="chatForm" class="chat-input-form">
+            <label class="sr-only" for="chatInput">상담 질문 입력</label>
+            <textarea id="chatInput" name="message" rows="2" placeholder="예: 공복혈당은 괜찮은데 식후 1시간이 자주 높아요. 어떻게 관리할까요?" required></textarea>
+            <button id="chatSendBtn" class="primary-button" type="submit">질문하기</button>
+          </form>
+
+          <div class="chat-tools">
+            <button id="chatClearBtn" class="ghost-button" type="button">대화 지우기</button>
+          </div>
+          <p class="ai-disclaimer">상담 내용은 생활관리 참고용입니다. 저혈당 증상, 300mg/dL 이상 고혈당, 반복적인 이상 수치, 약물 조정은 의료진 상담이 우선입니다.</p>
+        </section>
+      </section>
+
     </main>
   </div>
 
@@ -396,6 +440,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3v5.4l-4.7 7.8A3 3 0 0 0 7.9 21h8.2a3 3 0 0 0 2.6-4.8L14 8.4V3M9 12h6"/></svg>
       <span>검사</span>
     </button>
+    <button class="nav-button" data-nav="chat" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.8A3.8 3.8 0 0 1 8.8 3h6.4A3.8 3.8 0 0 1 19 6.8v4.4a3.8 3.8 0 0 1-3.8 3.8H11l-4.2 4v-4.2A3.8 3.8 0 0 1 5 11.2z"/></svg>
+      <span>상담</span>
+    </button>
     <button class="nav-button" data-nav="analysis" type="button">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 16l3-4 3 2 5-7 1 2"/></svg>
       <span>분석</span>
@@ -404,6 +452,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
-const STORAGE_KEY = 'diabetes-care-v7';
+const STORAGE_KEY = 'diabetes-care-v8';
 const AI_CONFIG_KEY = 'diabetes-care-ai-config-v1';
-const LEGACY_KEYS = ['diabetes-care-v4', 'diabetes-care-v3', 'diabetes-care-v2', 'metabolic-reset-v3'];
+const LEGACY_KEYS = ['diabetes-care-v7', 'diabetes-care-v4', 'diabetes-care-v3', 'diabetes-care-v2', 'metabolic-reset-v3'];
 
 const today = new Date();
 const todayDate = toDateInputValue(today);
@@ -18,7 +18,8 @@ const defaultState = {
   ],
   graphRange: 7,
   graphType: 'fasting',
-  recordFilter: 'all'
+  recordFilter: 'all',
+  chatMessages: []
 };
 
 let state = loadState();
@@ -95,6 +96,13 @@ const els = {
   aiClearKeyBtn: document.getElementById('aiClearKeyBtn'),
   aiRunBtn: document.getElementById('aiRunBtn'),
   aiCoachResult: document.getElementById('aiCoachResult'),
+  chatStatus: document.getElementById('chatStatus'),
+  chatMessages: document.getElementById('chatMessages'),
+  chatForm: document.getElementById('chatForm'),
+  chatInput: document.getElementById('chatInput'),
+  chatSendBtn: document.getElementById('chatSendBtn'),
+  chatClearBtn: document.getElementById('chatClearBtn'),
+  quickQuestionButtons: document.querySelectorAll('[data-chat-question]'),
   toast: document.getElementById('toast')
 };
 
@@ -173,6 +181,14 @@ function bindEvents() {
       showToast('AI 모델 설정을 저장했습니다.');
     });
   }
+
+  if (els.chatForm) els.chatForm.addEventListener('submit', onSubmitChat);
+  if (els.chatClearBtn) els.chatClearBtn.addEventListener('click', clearChatMessages);
+  if (els.quickQuestionButtons) {
+    els.quickQuestionButtons.forEach((button) => {
+      button.addEventListener('click', () => askQuickQuestion(button.dataset.chatQuestion));
+    });
+  }
 }
 
 function loadState() {
@@ -200,7 +216,8 @@ function loadState() {
           : structuredClone(defaultState.labRecords),
         graphRange: Number(parsed.graphRange) || 7,
         graphType: parsed.graphType || 'fasting',
-        recordFilter: parsed.recordFilter || 'all'
+        recordFilter: parsed.recordFilter || 'all',
+        chatMessages: Array.isArray(parsed.chatMessages) ? parsed.chatMessages.map(normalizeChatMessage).filter(Boolean) : []
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
       return normalizeState(migrated);
@@ -235,7 +252,8 @@ function normalizeState(raw) {
     labRecords: Array.isArray(raw.labRecords) ? raw.labRecords.map(normalizeLab) : structuredClone(defaultState.labRecords),
     graphRange: Number(raw.graphRange) || 7,
     graphType: raw.graphType || 'fasting',
-    recordFilter: raw.recordFilter || 'all'
+    recordFilter: raw.recordFilter || 'all',
+    chatMessages: Array.isArray(raw.chatMessages) ? raw.chatMessages.map(normalizeChatMessage).filter(Boolean).slice(-30) : []
   };
 }
 
@@ -259,6 +277,17 @@ function normalizeLab(item) {
     insulin: Number(item.insulin || 0),
     a1c: Number(item.a1c || 0),
     note: item.note || ''
+  };
+}
+
+function normalizeChatMessage(item) {
+  if (!item || !item.role || !item.text) return null;
+  const role = item.role === 'user' ? 'user' : 'assistant';
+  return {
+    id: item.id || uid(),
+    role,
+    text: String(item.text).slice(0, 4000),
+    createdAt: item.createdAt || new Date().toISOString()
   };
 }
 
@@ -292,6 +321,7 @@ function renderAll() {
   renderLab();
   renderAnalysis();
   renderAiCoachConfig();
+  renderChat();
   syncGraphButtons();
   syncRecordTypeButtons();
   syncRecordFilterButtons();
@@ -1053,6 +1083,221 @@ function buildLocalAiCoach(payload) {
   lines.push(pattern.copy);
   lines.push('');
   lines.push('※ 이 내용은 앱 내부 기준의 예비 코칭입니다. Vercel 환경변수와 API 함수가 정상 연결되면 Gemma4 코칭으로 표시됩니다.');
+  return lines.join('\n');
+}
+
+async function onSubmitChat(event) {
+  event.preventDefault();
+  const message = (els.chatInput?.value || '').trim();
+  if (!message) return;
+  await sendChatQuestion(message);
+}
+
+async function askQuickQuestion(question) {
+  if (!question) return;
+  if (els.chatInput) els.chatInput.value = question;
+  await sendChatQuestion(question);
+}
+
+async function sendChatQuestion(message) {
+  const userMessage = {
+    id: uid(),
+    role: 'user',
+    text: message,
+    createdAt: new Date().toISOString()
+  };
+  state.chatMessages.push(userMessage);
+  state.chatMessages = state.chatMessages.slice(-30);
+  saveState();
+  if (els.chatInput) els.chatInput.value = '';
+  renderChat();
+  setChatLoading(true);
+
+  const payload = buildChatPayload(message);
+  const model = els.aiModelSelect?.value || aiConfig.model || 'gemma-4-26b-a4b-it';
+  aiConfig.model = model;
+  saveAiConfig();
+
+  try {
+    let text = '';
+    if (aiConfig.apiKey) {
+      text = await callGemmaChatDirect(aiConfig.apiKey, model, payload);
+    } else {
+      text = await callGemmaChatProxy(model, payload);
+    }
+    addAssistantChat(text || '답변이 비어 있습니다. 다시 질문해 주세요.');
+    setChatStatus('답변 완료', 'status-stable');
+  } catch (error) {
+    console.error(error);
+    addAssistantChat(buildLocalChatAnswer(payload));
+    setChatStatus('기본 답변', 'status-caution');
+  } finally {
+    setChatLoading(false);
+  }
+}
+
+function addAssistantChat(text) {
+  state.chatMessages.push({
+    id: uid(),
+    role: 'assistant',
+    text,
+    createdAt: new Date().toISOString()
+  });
+  state.chatMessages = state.chatMessages.slice(-30);
+  saveState();
+  renderChat();
+}
+
+function clearChatMessages() {
+  state.chatMessages = [];
+  saveState();
+  renderChat();
+  setChatStatus('상담 대기', 'status-stable');
+  showToast('상담 대화를 지웠습니다.');
+}
+
+function setChatLoading(isLoading) {
+  if (!els.chatSendBtn) return;
+  els.chatSendBtn.disabled = isLoading;
+  els.chatSendBtn.textContent = isLoading ? '답변 중...' : '질문하기';
+  if (els.quickQuestionButtons) {
+    els.quickQuestionButtons.forEach((button) => { button.disabled = isLoading; });
+  }
+  if (isLoading) setChatStatus('Gemma4 답변 중', 'status-caution');
+}
+
+function setChatStatus(text, className) {
+  if (!els.chatStatus) return;
+  els.chatStatus.textContent = text;
+  els.chatStatus.className = `status-badge ${className}`;
+}
+
+function renderChat() {
+  if (!els.chatMessages) return;
+  const messages = state.chatMessages || [];
+  const intro = `
+    <div class="chat-bubble bot">
+      <div class="chat-role">AI 코치</div>
+      <p>안녕하세요. 당뇨 관련 수치와 생활관리 질문을 물어보세요. 진단이나 처방이 아니라 기록 기반 생활관리 조언으로 답변합니다.</p>
+    </div>`;
+  const html = messages.map((message) => {
+    const isUser = message.role === 'user';
+    const role = isUser ? '주인님' : 'AI 코치';
+    const bubbleClass = isUser ? 'user' : 'bot';
+    return `
+      <div class="chat-bubble ${bubbleClass}">
+        <div class="chat-role">${role}</div>
+        <p>${escapeHtml(message.text).replace(/\n/g, '<br>')}</p>
+      </div>`;
+  }).join('');
+  els.chatMessages.innerHTML = intro + html;
+  els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+}
+
+function buildChatPayload(question) {
+  return {
+    question,
+    generatedAt: new Date().toISOString(),
+    appData: buildAiPayload(),
+    recentChat: (state.chatMessages || []).slice(-8).map((item) => ({
+      role: item.role,
+      text: item.text,
+      createdAt: item.createdAt
+    })),
+    responseRules: [
+      '한국어로 친절하고 짧게 답변',
+      '진단, 처방, 약물 변경 지시는 금지',
+      '앱에 저장된 혈당/검사 수치가 있으면 연결해서 설명',
+      '위험 신호가 있으면 의료진 상담 안내',
+      '마지막에 오늘 할 행동 1~3개 제안'
+    ]
+  };
+}
+
+async function callGemmaChatProxy(model, payload) {
+  const response = await fetch('/api/gemma-chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, payload })
+  });
+  if (!response.ok) throw new Error(`Chat proxy error ${response.status}`);
+  const data = await response.json();
+  if (!data.text) throw new Error('Empty chat response');
+  return data.text;
+}
+
+async function callGemmaChatDirect(apiKey, model, payload) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: getGemmaChatSystemPrompt() }]
+      },
+      contents: [{
+        role: 'user',
+        parts: [{ text: makeChatPrompt(payload) }]
+      }],
+      generationConfig: {
+        temperature: 0.35,
+        maxOutputTokens: 900
+      }
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error?.message || `Gemma chat error ${response.status}`);
+  const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('\n').trim();
+  if (!text) throw new Error('Gemma chat response is empty');
+  return text;
+}
+
+function getGemmaChatSystemPrompt() {
+  return [
+    '당신은 당뇨 전단계 및 혈당 생활관리 상담 챗봇입니다.',
+    '사용자를 안심시키되 과장하지 말고, 한국어로 답변하세요.',
+    '진단, 처방, 약물 용량 조절, 약 중단 지시는 하지 마세요.',
+    '응급 또는 위험 신호가 있으면 의료진 상담을 먼저 권하세요.',
+    '앱 데이터가 있으면 공복혈당, 식후혈당, HbA1c, HOMA-IR와 연결해서 설명하세요.',
+    '답변은 1) 핵심 답변 2) 수치와 연결한 해석 3) 오늘 할 행동 으로 짧게 구성하세요.'
+  ].join(' ');
+}
+
+function makeChatPrompt(payload) {
+  return `아래는 당뇨관리 앱 사용자의 질문과 저장 데이터입니다. 상담 챗봇처럼 답변해 주세요.\n\n질문:\n${payload.question}\n\n데이터(JSON):\n${JSON.stringify(payload, null, 2)}`;
+}
+
+function buildLocalChatAnswer(payload) {
+  const q = (payload.question || '').toLowerCase();
+  const latestFasting = payload.appData.glucoseSummary.latestFasting;
+  const postMax = payload.appData.glucoseSummary.recentPostMax;
+  const lab = payload.appData.labSummary.latest;
+  const checklist = payload.appData.appInterpretation.checklist || [];
+  const lines = [];
+
+  lines.push('핵심 답변');
+  if (q.includes('공복')) {
+    lines.push('공복혈당은 전날 저녁 식사, 야식, 수면, 스트레스, 새벽 호르몬 영향에 따라 올라갈 수 있습니다.');
+  } else if (q.includes('식후') || q.includes('스파이크')) {
+    lines.push('식후혈당은 탄수화물 양과 식사 순서, 식후 활동량의 영향을 크게 받습니다. 식후 10~15분 걷기가 가장 실천하기 쉽습니다.');
+  } else if (q.includes('homa') || q.includes('인슐린')) {
+    lines.push('HOMA-IR는 공복혈당과 공복 인슐린으로 보는 인슐린저항성 참고 지표입니다. 단독으로 진단하지 않고 추세로 보는 것이 좋습니다.');
+  } else if (q.includes('당화') || q.includes('a1c') || q.includes('hba1c')) {
+    lines.push('HbA1c는 최근 약 2~3개월 평균 혈당 흐름을 보는 검사입니다. 매일 수치보다 장기 흐름 확인에 도움이 됩니다.');
+  } else {
+    lines.push('현재 질문은 생활관리 관점에서 접근할 수 있습니다. 앱에 기록된 공복·식후·검사 수치를 함께 보며 우선순위를 정하는 것이 좋습니다.');
+  }
+
+  lines.push('');
+  lines.push('수치와 연결한 해석');
+  lines.push(`- 최근 공복: ${latestFasting ? `${latestFasting.value}mg/dL · ${latestFasting.status}` : '기록 없음'}`);
+  lines.push(`- 최근 식후 최고: ${postMax ? `${postMax.value}mg/dL · ${postMax.type}` : '기록 없음'}`);
+  lines.push(`- HbA1c/HOMA-IR: ${lab ? `HbA1c ${lab.a1c}%, HOMA-IR ${lab.homaIr} · ${lab.homaStatus}` : '검사 기록 없음'}`);
+  lines.push('');
+  lines.push('오늘 할 행동');
+  checklist.slice(0, 3).forEach((item, index) => lines.push(`${index + 1}. ${item}`));
+  lines.push('');
+  lines.push('※ Gemma4 연결이 실패해 앱 내부 기본 상담으로 표시했습니다. 반복 고혈당이나 증상이 있으면 의료진 상담이 우선입니다.');
   return lines.join('\n');
 }
 
