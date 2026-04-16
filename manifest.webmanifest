@@ -1,6 +1,6 @@
 {
-  "name": "당뇨관리",
-  "short_name": "당뇨관리",
+  "name": "당뇨 AI 코치",
+  "short_name": "당뇨AI",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#eef4ff",

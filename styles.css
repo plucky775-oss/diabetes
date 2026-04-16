@@ -671,3 +671,124 @@ svg { display: block; width: 100%; height: auto; }
   .inline-pill,
   .choice-chip { font-size: 13px; }
 }
+
+/* Gemma4 AI coaching */
+.ai-coach-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f6f9ff 100%);
+}
+
+.ai-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.ai-actions .primary-button {
+  flex: 1 1 180px;
+}
+
+.line-button.strong {
+  min-height: 54px;
+  padding: 0 16px;
+  border-radius: 18px;
+}
+
+.ai-actions .ghost-button {
+  min-height: 54px;
+  padding: 0 16px;
+  border-radius: 18px;
+}
+
+.ai-result {
+  background: #f8fbff;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 16px;
+  color: var(--muted-strong);
+  line-height: 1.7;
+}
+
+.ai-result strong {
+  display: block;
+  color: var(--text);
+  font-size: 17px;
+  margin-bottom: 6px;
+}
+
+.ai-result p { margin: 6px 0 0; }
+
+.ai-source {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  margin-bottom: 12px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.ai-text {
+  font-size: 15px;
+  font-weight: 650;
+  white-space: normal;
+}
+
+.ai-disclaimer {
+  margin: 12px 2px 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 650;
+}
+
+.primary-button:disabled {
+  opacity: 0.62;
+  cursor: wait;
+}
+
+@media (max-width: 560px) {
+  .ai-config-grid { grid-template-columns: 1fr; }
+  .ai-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .ai-actions .primary-button { grid-column: 1 / -1; }
+}
+
+
+/* v7: visible Gemma4 coaching controls */
+.hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.ai-pill {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(47, 111, 229, 0.22);
+}
+.ai-coach-main {
+  order: -1;
+  border-color: rgba(47, 111, 229, 0.28);
+  box-shadow: 0 22px 44px rgba(47, 111, 229, 0.13);
+}
+.ai-key-field {
+  display: none !important;
+}
+.ai-config-grid {
+  grid-template-columns: 1fr;
+}
+@media (max-width: 560px) {
+  .hero-header { flex-direction: column; }
+  .hero-actions { width: 100%; flex-direction: row; }
+  .hero-actions .pill-button { flex: 1; text-align: center; }
+}

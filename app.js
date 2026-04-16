@@ -1,5 +1,6 @@
-const STORAGE_KEY = 'diabetes-care-v4';
-const LEGACY_KEYS = ['diabetes-care-v3', 'diabetes-care-v2', 'metabolic-reset-v3'];
+const STORAGE_KEY = 'diabetes-care-v7';
+const AI_CONFIG_KEY = 'diabetes-care-ai-config-v1';
+const LEGACY_KEYS = ['diabetes-care-v4', 'diabetes-care-v3', 'diabetes-care-v2', 'metabolic-reset-v3'];
 
 const today = new Date();
 const todayDate = toDateInputValue(today);
@@ -21,6 +22,7 @@ const defaultState = {
 };
 
 let state = loadState();
+let aiConfig = loadAiConfig();
 let toastTimer = null;
 
 const els = {
@@ -86,6 +88,13 @@ const els = {
   analysisMissionTitle: document.getElementById('analysisMissionTitle'),
   analysisMissionCopy: document.getElementById('analysisMissionCopy'),
   analysisChecklist: document.getElementById('analysisChecklist'),
+  aiCoachStatus: document.getElementById('aiCoachStatus'),
+  aiModelSelect: document.getElementById('aiModelSelect'),
+  aiApiKeyInput: document.getElementById('aiApiKeyInput'),
+  aiSaveKeyBtn: document.getElementById('aiSaveKeyBtn'),
+  aiClearKeyBtn: document.getElementById('aiClearKeyBtn'),
+  aiRunBtn: document.getElementById('aiRunBtn'),
+  aiCoachResult: document.getElementById('aiCoachResult'),
   toast: document.getElementById('toast')
 };
 
@@ -153,6 +162,17 @@ function bindEvents() {
       syncGraphButtons();
     });
   });
+
+  if (els.aiSaveKeyBtn) els.aiSaveKeyBtn.addEventListener('click', onSaveAiKey);
+  if (els.aiClearKeyBtn) els.aiClearKeyBtn.addEventListener('click', onClearAiKey);
+  if (els.aiRunBtn) els.aiRunBtn.addEventListener('click', onRunAiCoach);
+  if (els.aiModelSelect) {
+    els.aiModelSelect.addEventListener('change', () => {
+      aiConfig.model = els.aiModelSelect.value;
+      saveAiConfig();
+      showToast('AI 모델 설정을 저장했습니다.');
+    });
+  }
 }
 
 function loadState() {
@@ -190,6 +210,23 @@ function loadState() {
   }
 
   return structuredClone(defaultState);
+}
+
+function loadAiConfig() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AI_CONFIG_KEY) || '{}');
+    return {
+      model: saved.model || 'gemma-4-26b-a4b-it',
+      apiKey: saved.apiKey || ''
+    };
+  } catch (error) {
+    console.error(error);
+    return { model: 'gemma-4-26b-a4b-it', apiKey: '' };
+  }
+}
+
+function saveAiConfig() {
+  localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(aiConfig));
 }
 
 function normalizeState(raw) {
@@ -254,6 +291,7 @@ function renderAll() {
   renderLabFormPreview();
   renderLab();
   renderAnalysis();
+  renderAiCoachConfig();
   syncGraphButtons();
   syncRecordTypeButtons();
   syncRecordFilterButtons();
@@ -788,6 +826,234 @@ function buildChecklist() {
   else items.push('검사 결과를 넣으면 HOMA-IR와 HbA1c 해석이 함께 표시됩니다.');
 
   return items;
+}
+
+
+function renderAiCoachConfig() {
+  if (!els.aiModelSelect) return;
+  els.aiModelSelect.value = aiConfig.model || 'gemma-4-26b-a4b-it';
+  els.aiApiKeyInput.value = '';
+  els.aiApiKeyInput.placeholder = aiConfig.apiKey ? '저장된 키 사용 중' : 'Vercel 배포용은 입력하지 않음';
+  els.aiCoachStatus.textContent = aiConfig.apiKey ? '브라우저 키 저장됨' : 'Vercel 연결 대기';
+  els.aiCoachStatus.className = 'status-badge status-stable';
+}
+
+function onSaveAiKey() {
+  const key = (els.aiApiKeyInput.value || '').trim();
+  aiConfig.model = els.aiModelSelect.value || 'gemma-4-26b-a4b-it';
+  if (key) aiConfig.apiKey = key;
+  saveAiConfig();
+  renderAiCoachConfig();
+  showToast(key ? 'Gemma4 API 키를 저장했습니다.' : 'AI 모델 설정을 저장했습니다.');
+}
+
+function onClearAiKey() {
+  aiConfig.apiKey = '';
+  saveAiConfig();
+  renderAiCoachConfig();
+  showToast('Gemma4 API 키를 삭제했습니다.');
+}
+
+async function onRunAiCoach() {
+  const payload = buildAiPayload();
+  const model = els.aiModelSelect.value || aiConfig.model || 'gemma-4-26b-a4b-it';
+  aiConfig.model = model;
+  saveAiConfig();
+
+  setAiCoachLoading(true, 'Gemma4 분석 중');
+  try {
+    let text = '';
+    let source = '';
+
+    if (aiConfig.apiKey) {
+      text = await callGemmaDirect(aiConfig.apiKey, model, payload);
+      source = `Gemma4 · ${model}`;
+    } else {
+      try {
+        text = await callGemmaProxy(model, payload);
+        source = `Gemma4 서버 프록시 · ${model}`;
+      } catch (error) {
+        text = buildLocalAiCoach(payload);
+        source = '앱 자체 모의 코칭';
+      }
+    }
+
+    renderAiCoachResult(text, source);
+    els.aiCoachStatus.textContent = '완료';
+    els.aiCoachStatus.className = 'status-badge status-stable';
+  } catch (error) {
+    console.error(error);
+    const fallback = buildLocalAiCoach(payload);
+    renderAiCoachResult(`${fallback}\n\n※ Gemma4 연결 실패로 앱 자체 기준 코칭을 표시했습니다. API 키 또는 서버 프록시 설정을 확인하세요.`, '앱 자체 모의 코칭');
+    els.aiCoachStatus.textContent = '연결 확인';
+    els.aiCoachStatus.className = 'status-badge status-caution';
+  } finally {
+    setAiCoachLoading(false);
+  }
+}
+
+function setAiCoachLoading(isLoading, label = '분석 중') {
+  if (!els.aiRunBtn) return;
+  els.aiRunBtn.disabled = isLoading;
+  els.aiRunBtn.textContent = isLoading ? '분석 중...' : 'Gemma4 AI 코칭 받기';
+  if (isLoading) {
+    els.aiCoachStatus.textContent = label;
+    els.aiCoachStatus.className = 'status-badge status-caution';
+    els.aiCoachResult.innerHTML = '<strong>Gemma4가 수치를 정리하고 있습니다.</strong><p>공복·식후·검사 수치를 묶어 우선순위와 오늘의 행동을 만들고 있습니다.</p>';
+  }
+}
+
+function renderAiCoachResult(text, source) {
+  const safe = escapeHtml(text || '분석 결과가 비어 있습니다.');
+  els.aiCoachResult.innerHTML = `
+    <div class="ai-source">${escapeHtml(source)}</div>
+    <div class="ai-text">${safe.replace(/\n/g, '<br>')}</div>
+  `;
+}
+
+async function callGemmaProxy(model, payload) {
+  const response = await fetch('/api/gemma-coach', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, payload })
+  });
+  if (!response.ok) throw new Error(`Proxy error ${response.status}`);
+  const data = await response.json();
+  if (!data.text) throw new Error('Empty proxy response');
+  return data.text;
+}
+
+async function callGemmaDirect(apiKey, model, payload) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: getGemmaSystemPrompt() }]
+      },
+      contents: [{
+        role: 'user',
+        parts: [{ text: makeAiPrompt(payload) }]
+      }],
+      generationConfig: {
+        temperature: 0.25,
+        maxOutputTokens: 1200,
+      }
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = data?.error?.message || `Gemma API error ${response.status}`;
+    throw new Error(message);
+  }
+  const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('\n').trim();
+  if (!text) throw new Error('Gemma 응답이 비어 있습니다.');
+  return text;
+}
+
+function getGemmaSystemPrompt() {
+  return [
+    '당신은 당뇨 전단계 및 대사 건강 생활관리 코치입니다.',
+    '진단, 처방, 약물 변경 지시는 하지 말고 사용자가 입력한 수치의 추세와 생활관리 우선순위를 한국어로 설명하세요.',
+    '공복혈당, 식후 1시간, 식후 2시간, HbA1c, HOMA-IR를 구분해서 해석하세요.',
+    '위험 신호가 있으면 의료진 상담을 권하세요.',
+    '과장하지 말고, 오늘 바로 할 수 있는 행동 3가지를 짧게 제안하세요.'
+  ].join(' ');
+}
+
+function makeAiPrompt(payload) {
+  return `아래 당뇨관리 앱 데이터를 분석해 주세요.\n\n요청 형식:\n1) 한 줄 요약\n2) 가장 중요한 위험/주의 포인트\n3) 수치별 해석: 공복, 식후, HbA1c, HOMA-IR\n4) 오늘 할 행동 3가지\n5) 다음 기록 추천\n\n데이터(JSON):\n${JSON.stringify(payload, null, 2)}`;
+}
+
+function buildAiPayload() {
+  const fasting14 = getGraphSource('fasting', 14);
+  const post1 = getGraphSource('post1', 30);
+  const post2 = getGraphSource('post2', 30);
+  const latestFasting = getLatestGlucoseByType('fasting');
+  const latestLab = getLatestLab();
+  const labs = getSortedLabs().slice(0, 5).map((item) => ({
+    date: item.date,
+    fasting: item.fasting,
+    insulin: item.insulin,
+    a1c: item.a1c,
+    homaIr: Number(calculateHoma(item.fasting, item.insulin).toFixed(2)),
+    note: item.note || ''
+  }));
+  const recentPostMax = getRecentPostMax(30);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    glucoseSummary: {
+      latestFasting: latestFasting ? pickGlucose(latestFasting) : null,
+      fasting14Average: fasting14.length ? Number(average(fasting14.map((item) => item.value)).toFixed(1)) : null,
+      fasting14Trend: summarizeTrend(fasting14).short,
+      post1Average30: post1.length ? Number(average(post1.map((item) => item.value)).toFixed(1)) : null,
+      post2Average30: post2.length ? Number(average(post2.map((item) => item.value)).toFixed(1)) : null,
+      recentPostMax: recentPostMax ? pickGlucose(recentPostMax) : null
+    },
+    labSummary: {
+      latest: latestLab ? {
+        date: latestLab.date,
+        fasting: latestLab.fasting,
+        insulin: latestLab.insulin,
+        a1c: latestLab.a1c,
+        homaIr: Number(calculateHoma(latestLab.fasting, latestLab.insulin).toFixed(2)),
+        homaStatus: classifyHoma(calculateHoma(latestLab.fasting, latestLab.insulin)).label
+      } : null,
+      recentLabs: labs
+    },
+    recentRecords: getSortedGlucose().slice(0, 20).map(pickGlucose),
+    appInterpretation: {
+      carePlan: buildCarePlan(latestFasting?.value, recentPostMax?.value, latestLab?.a1c, latestLab ? calculateHoma(latestLab.fasting, latestLab.insulin) : null),
+      pattern: buildPatternInsight(),
+      checklist: buildChecklist()
+    },
+    safetyBoundary: '생활관리 참고용. 진단, 처방, 약물 변경은 의료진에게 확인.'
+  };
+}
+
+function pickGlucose(item) {
+  return {
+    date: item.date,
+    time: item.time,
+    type: typeLabel(item.type),
+    value: item.value,
+    food: item.food || '',
+    note: item.note || '',
+    status: classifyByType(item.type, item.value).label
+  };
+}
+
+function buildLocalAiCoach(payload) {
+  const plan = payload.appInterpretation.carePlan;
+  const pattern = payload.appInterpretation.pattern;
+  const lab = payload.labSummary.latest;
+  const glucose = payload.glucoseSummary;
+  const checklist = payload.appInterpretation.checklist;
+  const lines = [];
+
+  lines.push(`1) 한 줄 요약`);
+  lines.push(`${plan.overallTitle}`);
+  lines.push('');
+  lines.push('2) 가장 중요한 포인트');
+  lines.push(`${plan.focusCopy}`);
+  lines.push('');
+  lines.push('3) 수치별 해석');
+  lines.push(`- 공복: ${glucose.latestFasting ? `${glucose.latestFasting.value}mg/dL · ${glucose.latestFasting.status}` : '최근 기록 없음'}`);
+  lines.push(`- 최근 공복 평균: ${glucose.fasting14Average != null ? `${glucose.fasting14Average}mg/dL · 추세 ${glucose.fasting14Trend}` : '계산할 기록 부족'}`);
+  lines.push(`- 식후 최고: ${glucose.recentPostMax ? `${glucose.recentPostMax.value}mg/dL · ${glucose.recentPostMax.type}` : '최근 식후 기록 없음'}`);
+  lines.push(`- HbA1c/HOMA-IR: ${lab ? `HbA1c ${lab.a1c}%, HOMA-IR ${lab.homaIr} · ${lab.homaStatus}` : '검사 기록 없음'}`);
+  lines.push('');
+  lines.push('4) 오늘 할 행동 3가지');
+  checklist.slice(0, 3).forEach((item, index) => lines.push(`${index + 1}. ${item}`));
+  lines.push('');
+  lines.push('5) 다음 기록 추천');
+  lines.push(pattern.copy);
+  lines.push('');
+  lines.push('※ 이 내용은 앱 내부 기준의 예비 코칭입니다. Vercel 환경변수와 API 함수가 정상 연결되면 Gemma4 코칭으로 표시됩니다.');
+  return lines.join('\n');
 }
 
 function syncRecordTypeButtons() {

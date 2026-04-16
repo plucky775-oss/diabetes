@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#edf4ff" />
-  <title>당뇨관리</title>
+  <title>당뇨 AI 코치</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
   <div class="app-shell">
@@ -14,11 +14,14 @@
       <section id="view-home" class="view active">
         <header class="hero-header">
           <div>
-            <p class="eyebrow">METABOLIC COACH</p>
-            <h1>당뇨관리</h1>
-            <p class="hero-sub" id="heroDateText">오늘 흐름과 실천 포인트를 한눈에 확인하세요.</p>
+            <p class="eyebrow">GEMMA 4 AI COACH · V7</p>
+            <h1>당뇨 AI 코치</h1>
+            <p class="hero-sub" id="heroDateText">혈당·HbA1c·HOMA-IR를 기록하고 Gemma4가 생활관리 포인트를 정리합니다.</p>
           </div>
-          <button id="goToRecordBtn" class="pill-button" type="button">빠른 입력</button>
+          <div class="hero-actions">
+            <button id="goToRecordBtn" class="pill-button" type="button">빠른 입력</button>
+            <button class="pill-button ai-pill" data-nav="analysis" type="button">AI 코칭</button>
+          </div>
         </header>
 
         <section class="card summary-card">
@@ -303,7 +306,7 @@
       <section id="view-analysis" class="view">
         <div class="page-header">
           <h2>분석</h2>
-          <p>기록을 기반으로 지금 가장 중요한 관리 포인트를 정리합니다.</p>
+          <p>Gemma4가 공복·식후·검사 수치를 묶어서 오늘의 관리 우선순위를 정리합니다.</p>
         </div>
 
         <section class="card summary-card">
@@ -335,6 +338,43 @@
             <div id="analysisChecklist" class="check-list"></div>
           </article>
         </section>
+
+        <section class="card ai-coach-card ai-coach-main">
+          <div class="section-head section-head-start stacked-on-mobile">
+            <div>
+              <p class="section-kicker">GEMMA 4 AI COACH</p>
+              <h3>Gemma4 맞춤 코칭</h3>
+              <p class="section-subtext">Vercel 환경변수 GEMINI_API_KEY를 자동으로 사용합니다. 앱 화면에 키를 넣지 않아도 됩니다.</p>
+            </div>
+            <span id="aiCoachStatus" class="status-badge status-stable">Vercel 연결 대기</span>
+          </div>
+
+          <div class="ai-config-grid">
+            <label>
+              Gemma4 모델
+              <select id="aiModelSelect">
+                <option value="gemma-4-26b-a4b-it">gemma-4-26b-a4b-it · 빠른 코칭</option>
+                <option value="gemma-4-31b-it">gemma-4-31b-it · 정밀 분석</option>
+              </select>
+            </label>
+            <label class="ai-key-field">
+              Google AI Studio API 키
+              <input id="aiApiKeyInput" type="password" autocomplete="off" placeholder="테스트용으로만 입력" />
+            </label>
+          </div>
+
+          <div class="ai-actions">
+            <button id="aiSaveKeyBtn" class="line-button strong ai-key-field" type="button">키 저장</button>
+            <button id="aiClearKeyBtn" class="ghost-button ai-key-field" type="button">키 삭제</button>
+            <button id="aiRunBtn" class="primary-button" type="button">Gemma4 AI 코칭 받기</button>
+          </div>
+
+          <div id="aiCoachResult" class="ai-result">
+            <strong>Gemma4 코칭 준비 완료</strong>
+            <p>Vercel에 등록한 GEMINI_API_KEY로 서버에서 안전하게 호출합니다. 버튼을 누르면 저장된 수치를 분석합니다.</p>
+          </div>
+          <p class="ai-disclaimer">이 코칭은 생활관리 참고용이며 진단·처방이 아닙니다. 저혈당 증상, 300mg/dL 이상 고혈당, 반복적인 이상 수치는 의료진 상담이 우선입니다.</p>
+        </section>
       </section>
     </main>
   </div>
@@ -364,6 +404,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
