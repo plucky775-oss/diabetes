@@ -7,12 +7,12 @@ function getSystemPrompt() {
     '진단, 처방, 약물 변경, 약물 중단, 약물 용량 조절 지시는 하지 마세요.',
     '저혈당 증상, 300mg/dL 이상 고혈당, 반복적인 이상 수치, 흉통/호흡곤란/의식저하 같은 위험 신호는 의료진 상담 또는 응급 진료를 안내하세요.',
     '앱 데이터가 있으면 공복혈당, 식후혈당, HbA1c, HOMA-IR와 연결해서 설명하세요.',
-    '답변은 1) 핵심 답변 2) 수치와 연결한 해석 3) 오늘 할 행동 으로 짧게 구성하세요.'
+    '답변은 반드시 1) 핵심 답변 2) 수치와 연결한 해석 3) 오늘 할 행동 4) 다음 기록 추천 순서로 짧게 구성하세요.'
   ].join(' ');
 }
 
 function makePrompt(payload) {
-  return `아래는 당뇨관리 앱 사용자의 질문과 저장 데이터입니다. 상담 챗봇처럼 답변해 주세요.\n\n질문:\n${payload?.question || ''}\n\n데이터(JSON):\n${JSON.stringify(payload, null, 2)}`;
+  return `아래는 당뇨관리 앱 사용자의 질문과 저장 데이터입니다. 상담 챗봇처럼 답변하되, 화면에서 단계별 카드로 보여주기 좋게 번호가 붙은 짧은 섹션으로 답변해 주세요.\n\n질문:\n${payload?.question || ''}\n\n데이터(JSON):\n${JSON.stringify(payload, null, 2)}`;
 }
 
 export default async function handler(req, res) {
