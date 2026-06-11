@@ -899,3 +899,130 @@ svg { display: block; width: 100%; height: auto; }
   .chat-input-form { grid-template-columns: 1fr; }
   .chat-input-form .primary-button { min-height: 54px; }
 }
+
+
+/* v9: 85점 개선형 - 위험 신호, 검사 기준표, 단계형 상담 UI */
+.risk-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.risk-card {
+  display: grid;
+  gap: 5px;
+  border-radius: 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  line-height: 1.55;
+}
+.risk-card strong { font-size: 15px; }
+.risk-card span { color: var(--muted-strong); font-size: 14px; font-weight: 700; }
+.risk-stable { background: var(--green-soft); border-color: rgba(24, 163, 90, 0.16); }
+.risk-stable strong { color: var(--green); }
+.risk-caution { background: var(--amber-soft); border-color: rgba(214, 154, 19, 0.20); }
+.risk-caution strong { color: #9a6a00; }
+.risk-high { background: var(--red-soft); border-color: rgba(217, 78, 78, 0.20); }
+.risk-high strong { color: var(--red); }
+
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.criteria-grid article {
+  display: grid;
+  gap: 6px;
+  background: #f8fbff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 14px;
+}
+.criteria-grid strong { font-size: 15px; color: var(--text); }
+.criteria-grid span { color: var(--muted); font-size: 13px; font-weight: 700; line-height: 1.55; }
+
+.chat-bubble.bot {
+  width: min(100%, 620px);
+}
+.chat-answer-steps {
+  display: grid;
+  gap: 10px;
+}
+.chat-step {
+  background: #f8fbff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px 13px;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: chatStepIn 0.35s ease forwards;
+  animation-delay: calc(var(--step-index, 0) * 0.14s);
+}
+.chat-step-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.chat-step-head span {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+.chat-step-head strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.chat-step-body p,
+.chat-step-body ul {
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: 14px;
+  line-height: 1.65;
+  font-weight: 650;
+}
+.chat-step-body p + p { margin-top: 6px; }
+.chat-step-body ul { padding-left: 18px; }
+.chat-step-body li + li { margin-top: 5px; }
+.typing-bubble p { margin-top: 8px; }
+.typing-row {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  min-height: 18px;
+}
+.typing-row span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--primary);
+  opacity: 0.35;
+  animation: typingDot 1s infinite ease-in-out;
+}
+.typing-row span:nth-child(2) { animation-delay: 0.12s; }
+.typing-row span:nth-child(3) { animation-delay: 0.24s; }
+
+@keyframes chatStepIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes typingDot {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40% { transform: translateY(-4px); opacity: 0.95; }
+}
+
+@media (max-width: 560px) {
+  .criteria-grid { grid-template-columns: 1fr; }
+  .row-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .list-top { align-items: stretch; }
+  .chat-bubble.bot { width: 100%; }
+  .chat-step { padding: 11px 12px; }
+}

@@ -1,6 +1,6 @@
-const STORAGE_KEY = 'diabetes-care-v8';
+const STORAGE_KEY = 'diabetes-care-v9';
 const AI_CONFIG_KEY = 'diabetes-care-ai-config-v1';
-const LEGACY_KEYS = ['diabetes-care-v7', 'diabetes-care-v4', 'diabetes-care-v3', 'diabetes-care-v2', 'metabolic-reset-v3'];
+const LEGACY_KEYS = ['diabetes-care-v8', 'diabetes-care-v7', 'diabetes-care-v4', 'diabetes-care-v3', 'diabetes-care-v2', 'metabolic-reset-v3'];
 
 const today = new Date();
 const todayDate = toDateInputValue(today);
@@ -25,6 +25,7 @@ const defaultState = {
 let state = loadState();
 let aiConfig = loadAiConfig();
 let toastTimer = null;
+let isChatLoading = false;
 
 const els = {
   views: document.querySelectorAll('.view'),
@@ -38,6 +39,7 @@ const els = {
   homePostMax: document.getElementById('homePostMax'),
   homeHoma: document.getElementById('homeHoma'),
   homeHomaStatus: document.getElementById('homeHomaStatus'),
+  homeRiskPanel: document.getElementById('homeRiskPanel'),
   homeActionTitle: document.getElementById('homeActionTitle'),
   homeActionBody: document.getElementById('homeActionBody'),
   homeTrendTitle: document.getElementById('homeTrendTitle'),
@@ -149,8 +151,9 @@ function bindEvents() {
 
   els.labForm.addEventListener('submit', onSubmitLab);
   els.labCancelBtn.addEventListener('click', resetLabForm);
-  ['fasting', 'insulin', 'a1c'].forEach((name) => {
-    field(els.labForm, name).addEventListener('input', renderLabFormPreview);
+  ['fasting', 'insulin', 'a1c', 'cPeptide', 'tg', 'hdl', 'ldl', 'alt', 'uricAcid'].forEach((name) => {
+    const input = field(els.labForm, name);
+    if (input) input.addEventListener('input', renderLabFormPreview);
   });
 
   els.rangeButtons.forEach((button) => {
@@ -269,13 +272,38 @@ function normalizeGlucose(item) {
   };
 }
 
+function optionalNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function hasValue(value) {
+  return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+}
+
+function hasAnyLabValue(lab) {
+  return ['fasting', 'insulin', 'a1c', 'cPeptide', 'tg', 'hdl', 'ldl', 'alt', 'uricAcid'].some((key) => hasValue(lab[key]));
+}
+
+function formatLabValue(value, digits = 0) {
+  if (!hasValue(value)) return '—';
+  return digits ? formatFixed(value, digits) : formatNumber(value);
+}
+
 function normalizeLab(item) {
   return {
     id: item.id || uid(),
     date: item.date || todayDate,
-    fasting: Number(item.fasting || 0),
-    insulin: Number(item.insulin || 0),
-    a1c: Number(item.a1c || 0),
+    fasting: optionalNumber(item.fasting),
+    insulin: optionalNumber(item.insulin),
+    a1c: optionalNumber(item.a1c),
+    cPeptide: optionalNumber(item.cPeptide),
+    tg: optionalNumber(item.tg),
+    hdl: optionalNumber(item.hdl),
+    ldl: optionalNumber(item.ldl),
+    alt: optionalNumber(item.alt),
+    uricAcid: optionalNumber(item.uricAcid),
     note: item.note || ''
   };
 }
@@ -354,6 +382,57 @@ function renderHome() {
   els.homeTrendCopy.textContent = trend.copy;
 
   renderMiniChart();
+  renderRiskPanel();
+}
+
+function renderRiskPanel() {
+  if (!els.homeRiskPanel) return;
+  const flags = buildRiskFlags();
+  if (!flags.length) {
+    els.homeRiskPanel.innerHTML = `
+      <div class="risk-card risk-stable">
+        <strong>큰 위험 신호는 보이지 않습니다</strong>
+        <span>기록을 이어가면 식후 반응과 HOMA-IR 흐름까지 더 정확하게 잡아낼 수 있습니다.</span>
+      </div>`;
+    return;
+  }
+  els.homeRiskPanel.innerHTML = flags.slice(0, 3).map((flag) => `
+    <div class="risk-card ${flag.level === 'high' ? 'risk-high' : 'risk-caution'}">
+      <strong>${escapeHtml(flag.title)}</strong>
+      <span>${escapeHtml(flag.copy)}</span>
+    </div>
+  `).join('');
+}
+
+function buildRiskFlags() {
+  const flags = [];
+  const fastingItems = getGraphSource('fasting', 30);
+  const postItems = getSortedGlucose().filter((item) => item.type !== 'fasting' && isWithinDays(item.date, 30));
+  const latestLab = getLatestLab();
+  const latestFasting = getLatestGlucoseByType('fasting');
+  const latestHoma = latestLab ? calculateHoma(latestLab.fasting, latestLab.insulin) : null;
+
+  const repeatedFastingHigh = fastingItems.filter((item) => item.value >= 126).length;
+  const repeatedPostHigh = postItems.filter((item) => item.value >= 200).length;
+
+  if (latestFasting?.value >= 126 || repeatedFastingHigh >= 2) {
+    flags.push({ level: 'high', title: '공복혈당 진료상담 권장 구간', copy: '공복 126mg/dL 이상이 보이면 반복 여부를 확인하고 병원 검사 상담을 권장합니다.' });
+  }
+  if (repeatedPostHigh || postItems.some((item) => item.value >= 200)) {
+    flags.push({ level: 'high', title: '식후혈당 고위험 구간', copy: '식후 200mg/dL 이상은 생활관리만으로 넘기지 말고 의료진 상담이 필요할 수 있습니다.' });
+  }
+  if (hasValue(latestLab?.a1c) && latestLab.a1c >= 6.5) {
+    flags.push({ level: 'high', title: 'HbA1c 점검 필요', copy: 'HbA1c 6.5% 이상은 당뇨 진단 기준에 해당할 수 있어 진료 상담을 권장합니다.' });
+  } else if (hasValue(latestLab?.a1c) && latestLab.a1c >= 5.7) {
+    flags.push({ level: 'caution', title: 'HbA1c 주의 구간', copy: 'HbA1c가 당뇨전단계 범위에 있어 식후혈당과 체중·허리둘레 흐름을 같이 보세요.' });
+  }
+  if (latestHoma != null && latestHoma >= 2) {
+    flags.push({ level: latestHoma >= 3 ? 'high' : 'caution', title: '인슐린저항성 관리 필요', copy: `HOMA-IR ${formatFixed(latestHoma, 2)}로 ${classifyHoma(latestHoma).label} 단계입니다. 식전 준비와 식후 활동 루틴을 우선 유지하세요.` });
+  }
+  if (hasValue(latestLab?.uricAcid) && latestLab.uricAcid >= 7) {
+    flags.push({ level: 'caution', title: '요산 관리 필요', copy: '요산이 7mg/dL 이상이면 수분, 음주, 고퓨린 식품과 함께 주치의 관리 계획을 확인하세요.' });
+  }
+  return flags;
 }
 
 function renderMiniChart() {
@@ -574,11 +653,22 @@ function onSubmitLab(event) {
   const lab = normalizeLab({
     id: formData.get('id') || uid(),
     date: formData.get('date') || todayDate,
-    fasting: Number(formData.get('fasting')),
-    insulin: Number(formData.get('insulin')),
-    a1c: Number(formData.get('a1c')),
+    fasting: formData.get('fasting'),
+    insulin: formData.get('insulin'),
+    a1c: formData.get('a1c'),
+    cPeptide: formData.get('cPeptide'),
+    tg: formData.get('tg'),
+    hdl: formData.get('hdl'),
+    ldl: formData.get('ldl'),
+    alt: formData.get('alt'),
+    uricAcid: formData.get('uricAcid'),
     note: String(formData.get('note') || '').trim()
   });
+
+  if (!hasAnyLabValue(lab) && !lab.note) {
+    showToast('검사 수치나 메모를 하나 이상 입력해주세요.');
+    return;
+  }
 
   const existingIndex = state.labRecords.findIndex((item) => item.id === lab.id);
   if (existingIndex >= 0) {
@@ -606,18 +696,33 @@ function resetLabForm() {
 }
 
 function renderLabFormPreview() {
-  const fasting = Number(field(els.labForm, 'fasting').value || 0);
-  const insulin = Number(field(els.labForm, 'insulin').value || 0);
-  if (!fasting || !insulin) {
-    els.labFormHoma.textContent = 'HOMA-IR —';
-    els.labFormStatus.textContent = '공복혈당과 인슐린을 입력하면 자동 계산됩니다.';
+  const fasting = optionalNumber(field(els.labForm, 'fasting')?.value);
+  const insulin = optionalNumber(field(els.labForm, 'insulin')?.value);
+  const a1c = optionalNumber(field(els.labForm, 'a1c')?.value);
+  const tg = optionalNumber(field(els.labForm, 'tg')?.value);
+  const hdl = optionalNumber(field(els.labForm, 'hdl')?.value);
+
+  if (hasValue(fasting) && hasValue(insulin)) {
+    const homa = calculateHoma(fasting, insulin);
+    if (homa != null) {
+      const status = classifyHoma(homa);
+      els.labFormHoma.textContent = `HOMA-IR ${formatFixed(homa, 2)}`;
+      els.labFormStatus.textContent = `현재 계산값은 ${status.label} 단계입니다. 공복혈당과 인슐린이 함께 저장됩니다.`;
+    } else {
+      els.labFormHoma.textContent = 'HOMA-IR —';
+      els.labFormStatus.textContent = 'HOMA-IR 계산에는 0보다 큰 공복혈당과 인슐린 값이 필요합니다.';
+    }
     return;
   }
 
-  const homa = calculateHoma(fasting, insulin);
-  const status = classifyHoma(homa);
-  els.labFormHoma.textContent = `HOMA-IR ${formatFixed(homa, 2)}`;
-  els.labFormStatus.textContent = `현재 계산값은 ${status.label} 단계입니다.`;
+  if (hasValue(a1c) || hasValue(tg) || hasValue(hdl) || hasValue(fasting) || hasValue(insulin)) {
+    els.labFormHoma.textContent = 'HOMA-IR —';
+    els.labFormStatus.textContent = '일부 항목만 입력해도 저장됩니다. HOMA-IR는 공복혈당과 인슐린을 둘 다 넣으면 계산됩니다.';
+    return;
+  }
+
+  els.labFormHoma.textContent = 'HOMA-IR —';
+  els.labFormStatus.textContent = '검사 결과지에서 확인되는 항목만 입력해도 저장됩니다.';
 }
 
 function renderLab() {
@@ -638,51 +743,100 @@ function renderLab() {
   }
 
   const homa = calculateHoma(latest.fasting, latest.insulin);
-  const homaStatus = classifyHoma(homa);
-  const fastingStatus = classifyFasting(latest.fasting);
-  const a1cStatus = classifyA1c(latest.a1c);
+  const homaStatus = homa != null ? classifyHoma(homa) : null;
   const previous = items[1] || null;
 
   els.labLatestDate.textContent = latest.date;
-  els.labLatestFasting.textContent = formatNumber(latest.fasting);
-  els.labLatestA1c.textContent = formatFixed(latest.a1c, 1);
-  els.labLatestHoma.textContent = formatFixed(homa, 2);
-  els.labLatestHomaText.textContent = homaStatus.label;
-  els.labInsight.textContent = `공복혈당은 ${fastingStatus.label} 구간, HbA1c는 ${a1cStatus.label} 구간, HOMA-IR는 ${formatFixed(homa, 2)}로 ${homaStatus.label} 단계입니다.`;
+  els.labLatestFasting.textContent = formatLabValue(latest.fasting, 0);
+  els.labLatestA1c.textContent = formatLabValue(latest.a1c, 1);
+  els.labLatestHoma.textContent = homa != null ? formatFixed(homa, 2) : '—';
+  els.labLatestHomaText.textContent = homaStatus ? homaStatus.label : '계산 대기';
+  els.labInsight.textContent = buildLabInsight(latest);
   els.labCompare.textContent = previous
     ? buildLabComparison(latest, previous)
     : '아직 비교할 이전 검사 기록이 없습니다.';
 
   els.labList.innerHTML = items.map((item) => {
     const itemHoma = calculateHoma(item.fasting, item.insulin);
-    const itemStatus = classifyHoma(itemHoma);
+    const itemStatus = itemHoma != null ? classifyHoma(itemHoma) : null;
+    const metricText = buildLabMetricText(item);
     return `
       <article class="list-item">
         <div class="list-top">
           <div>
             <div class="list-title">${item.date}</div>
-            <div class="list-meta">공복 ${formatNumber(item.fasting)}mg/dL · 인슐린 ${formatFixed(item.insulin, 2)} · HbA1c ${formatFixed(item.a1c, 1)}%</div>
+            <div class="list-meta">${metricText || '입력된 수치 없음'}</div>
           </div>
           <div class="row-actions">
-            <span class="tiny-status ${itemStatus.badgeClass}">${itemStatus.label}</span>
+            ${itemStatus ? `<span class="tiny-status ${itemStatus.badgeClass}">${itemStatus.label}</span>` : '<span class="tiny-status status-caution">부분 입력</span>'}
             <button class="line-button" type="button" onclick="editLab('${item.id}')">수정</button>
             <button class="ghost-button" type="button" onclick="deleteLab('${item.id}')">삭제</button>
           </div>
         </div>
-        <div class="list-sub">HOMA-IR ${formatFixed(itemHoma, 2)} · ${itemStatus.label} 단계</div>
+        <div class="list-sub">${itemHoma != null ? `HOMA-IR ${formatFixed(itemHoma, 2)} · ${itemStatus.label} 단계` : 'HOMA-IR 계산 대기: 공복혈당과 인슐린을 함께 입력하세요.'}</div>
         ${item.note ? `<div class="list-note">${escapeHtml(item.note)}</div>` : ''}
       </article>
     `;
   }).join('');
 }
 
+function buildLabInsight(latest) {
+  const parts = [];
+  if (hasValue(latest.fasting)) {
+    parts.push(`공복혈당은 ${classifyFasting(latest.fasting).label} 구간`);
+  }
+  if (hasValue(latest.a1c)) {
+    parts.push(`HbA1c는 ${classifyA1c(latest.a1c).label} 구간`);
+  }
+  const homa = calculateHoma(latest.fasting, latest.insulin);
+  if (homa != null) {
+    parts.push(`HOMA-IR는 ${formatFixed(homa, 2)}로 ${classifyHoma(homa).label} 단계`);
+  }
+  if (hasValue(latest.tg) && hasValue(latest.hdl)) {
+    parts.push(`TG/HDL 비율은 ${formatFixed(latest.tg / latest.hdl, 2)}`);
+  }
+  if (hasValue(latest.uricAcid) && latest.uricAcid >= 7) {
+    parts.push('요산은 관리가 필요한 구간');
+  }
+  if (hasValue(latest.alt) && latest.alt >= 40) {
+    parts.push('ALT는 간/지방간 관리 확인 필요');
+  }
+  return parts.length
+    ? `${parts.join(', ')}입니다. 입력하지 않은 항목은 해석에서 제외했습니다.`
+    : '검사 수치가 아직 없어 메모 중심으로 저장되었습니다.';
+}
+
+function buildLabMetricText(item) {
+  const pieces = [];
+  if (hasValue(item.fasting)) pieces.push(`공복 ${formatNumber(item.fasting)}mg/dL`);
+  if (hasValue(item.insulin)) pieces.push(`인슐린 ${formatFixed(item.insulin, 2)}`);
+  if (hasValue(item.a1c)) pieces.push(`HbA1c ${formatFixed(item.a1c, 1)}%`);
+  if (hasValue(item.cPeptide)) pieces.push(`C-peptide ${formatFixed(item.cPeptide, 2)}`);
+  if (hasValue(item.tg)) pieces.push(`TG ${formatNumber(item.tg)}`);
+  if (hasValue(item.hdl)) pieces.push(`HDL ${formatNumber(item.hdl)}`);
+  if (hasValue(item.ldl)) pieces.push(`LDL ${formatNumber(item.ldl)}`);
+  if (hasValue(item.alt)) pieces.push(`ALT ${formatNumber(item.alt)}`);
+  if (hasValue(item.uricAcid)) pieces.push(`요산 ${formatFixed(item.uricAcid, 1)}`);
+  return pieces.join(' · ');
+}
+
 function buildLabComparison(latest, previous) {
-  const homaLatest = calculateHoma(latest.fasting, latest.insulin);
-  const homaPrevious = calculateHoma(previous.fasting, previous.insulin);
-  const fastingDiff = latest.fasting - previous.fasting;
-  const a1cDiff = latest.a1c - previous.a1c;
-  const homaDiff = homaLatest - homaPrevious;
-  return `이전 검사 대비 공복혈당 ${signedNumber(fastingDiff)}mg/dL, HbA1c ${signedFixed(a1cDiff, 1)}%p, HOMA-IR ${signedFixed(homaDiff, 2)} 변화입니다.`;
+  const diffs = [
+    buildMetricDiff('공복혈당', latest.fasting, previous.fasting, 'mg/dL', 0),
+    buildMetricDiff('HbA1c', latest.a1c, previous.a1c, '%p', 1),
+    buildMetricDiff('HOMA-IR', calculateHoma(latest.fasting, latest.insulin), calculateHoma(previous.fasting, previous.insulin), '', 2),
+    buildMetricDiff('TG', latest.tg, previous.tg, 'mg/dL', 0),
+    buildMetricDiff('HDL', latest.hdl, previous.hdl, 'mg/dL', 0),
+    buildMetricDiff('요산', latest.uricAcid, previous.uricAcid, 'mg/dL', 1)
+  ].filter(Boolean);
+  return diffs.length ? `이전 검사 대비 ${diffs.join(', ')} 변화입니다.` : '이전 검사와 공통으로 입력된 항목이 없어 비교할 수 없습니다.';
+}
+
+function buildMetricDiff(label, latestValue, previousValue, unit, digits) {
+  if (!hasValue(latestValue) || !hasValue(previousValue)) return '';
+  const diff = Number(latestValue) - Number(previousValue);
+  const formatted = digits ? signedFixed(diff, digits) : signedNumber(diff);
+  return `${label} ${formatted}${unit}`;
 }
 
 function editLab(id) {
@@ -691,10 +845,10 @@ function editLab(id) {
   openView('lab');
   field(els.labForm, 'id').value = lab.id;
   field(els.labForm, 'date').value = lab.date;
-  field(els.labForm, 'fasting').value = lab.fasting;
-  field(els.labForm, 'insulin').value = lab.insulin;
-  field(els.labForm, 'a1c').value = lab.a1c;
-  field(els.labForm, 'note').value = lab.note;
+  ['fasting', 'insulin', 'a1c', 'cPeptide', 'tg', 'hdl', 'ldl', 'alt', 'uricAcid', 'note'].forEach((name) => {
+    const input = field(els.labForm, name);
+    if (input) input.value = lab[name] ?? '';
+  });
   els.labFormTitle.textContent = '검사 수정';
   els.labSubmitBtn.textContent = '검사 수정 저장';
   els.labCancelBtn.classList.remove('hidden');
@@ -769,9 +923,9 @@ function buildCarePlan(fastingValue, postMaxValue, a1cValue, homaValue) {
     actionCopy = '특히 식후 최고 혈당이 안정 범위를 유지하도록 가벼운 걷기와 기록을 이어가세요.';
     focusTitle = '안정 흐름을 계속 유지하는 것이 핵심입니다';
     focusCopy = '공복과 식후 모두 크게 흔들리지 않도록 현재 식사 패턴과 활동량을 유지하는 것이 좋습니다.';
-  } else if ((postStatus?.level || 0) >= (fastingStatus?.level || 0) && (postStatus?.level || 0) >= (homaStatus?.level || 0)) {
-    badge = postStatus?.level === 2 ? '점검 필요' : '주의 필요';
-    badgeClass = postStatus?.level === 2 ? 'status-high' : 'status-caution';
+  } else if (postStatus && (!fastingStatus || postStatus.level >= fastingStatus.level) && (!homaStatus || postStatus.level >= homaStatus.level) && (!a1cStatus || postStatus.level >= a1cStatus.level)) {
+    badge = postStatus.level === 2 ? '점검 필요' : '주의 필요';
+    badgeClass = postStatus.level === 2 ? 'status-high' : 'status-caution';
     overallTitle = '식후 혈당 관리에 먼저 집중하는 편이 좋습니다';
     overallCopy = `최근 식후 최고 ${withUnit(postMaxValue, 'mg/dL')}가 반복되어 식후 반응을 먼저 다듬는 편이 좋습니다.`;
     analysisCopy = '점심이나 저녁 식후에 상승이 반복되면 공복보다 식후 관리 루틴의 효과가 더 크게 느껴질 수 있습니다.';
@@ -779,9 +933,9 @@ function buildCarePlan(fastingValue, postMaxValue, a1cValue, homaValue) {
     actionCopy = '특히 식후 1시간 수치가 높다면 식사 직후 가벼운 걷기와 탄수량 조절을 우선 적용해보세요.';
     focusTitle = '식후 스파이크를 줄이는 것이 1순위입니다';
     focusCopy = '식후 혈당이 안정되면 주간 평균과 공복 흐름도 함께 좋아질 가능성이 큽니다.';
-  } else if ((homaStatus?.level || 0) >= (fastingStatus?.level || 0)) {
-    badge = homaStatus?.level === 2 ? '점검 필요' : '주의 필요';
-    badgeClass = homaStatus?.level === 2 ? 'status-high' : 'status-caution';
+  } else if (homaStatus && (!fastingStatus || homaStatus.level >= fastingStatus.level) && (!a1cStatus || homaStatus.level >= a1cStatus.level)) {
+    badge = homaStatus.level === 2 ? '점검 필요' : '주의 필요';
+    badgeClass = homaStatus.level === 2 ? 'status-high' : 'status-caution';
     overallTitle = '혈당보다 인슐린저항성 관리가 더 중요한 구간입니다';
     overallCopy = `HOMA-IR ${withUnit(homaValue, '', 2)}가 ${homaStatus.label} 단계여서 혈당이 무난해 보여도 대사 관리가 필요합니다.`;
     analysisCopy = '지금은 숫자 하나보다 흐름이 중요합니다. 공복 유지, 식전 준비, 식후 활동 같은 루틴이 더 큰 도움이 됩니다.';
@@ -789,9 +943,9 @@ function buildCarePlan(fastingValue, postMaxValue, a1cValue, homaValue) {
     actionCopy = '아침 공복 유지, 식전 준비, 식후 가벼운 활동처럼 인슐린 감수성에 도움이 되는 루틴을 우선 유지하세요.';
     focusTitle = '인슐린저항성 개선이 우선입니다';
     focusCopy = '당장 혈당이 크게 높지 않아도 HOMA-IR가 높으면 생활 루틴을 정교하게 유지하는 것이 좋습니다.';
-  } else {
-    badge = fastingStatus?.level === 2 ? '점검 필요' : '주의 필요';
-    badgeClass = fastingStatus?.level === 2 ? 'status-high' : 'status-caution';
+  } else if (fastingStatus) {
+    badge = fastingStatus.level === 2 ? '점검 필요' : '주의 필요';
+    badgeClass = fastingStatus.level === 2 ? 'status-high' : 'status-caution';
     overallTitle = '공복혈당 관리에 조금 더 집중할 필요가 있습니다';
     overallCopy = `최근 공복 ${withUnit(fastingValue, 'mg/dL')}가 ${fastingStatus.label} 구간이어서 아침 전후 루틴을 점검하는 것이 좋습니다.`;
     analysisCopy = '공복이 먼저 흔들리면 하루 전체 흐름도 불안정해질 수 있어서 기상 후 루틴과 전날 저녁 패턴을 함께 살펴보는 편이 좋습니다.';
@@ -799,6 +953,16 @@ function buildCarePlan(fastingValue, postMaxValue, a1cValue, homaValue) {
     actionCopy = '전날 저녁 탄수량과 야식 여부, 기상 후 활동량을 함께 확인해 공복 변화를 줄여보세요.';
     focusTitle = '공복 변동폭을 줄이는 것이 중요합니다';
     focusCopy = '공복이 안정되면 그래프 전체가 훨씬 부드럽게 바뀌는 경우가 많습니다.';
+  } else if (a1cStatus) {
+    badge = a1cStatus.level === 2 ? '점검 필요' : '주의 필요';
+    badgeClass = a1cStatus.level === 2 ? 'status-high' : 'status-caution';
+    overallTitle = 'HbA1c 흐름을 우선 확인해야 합니다';
+    overallCopy = `HbA1c ${withUnit(a1cValue, '%', 1)}가 ${a1cStatus.label} 구간입니다. 공복과 식후 기록을 같이 모아 원인을 좁혀보세요.`;
+    analysisCopy = 'HbA1c는 장기 흐름을 보는 지표라서, 최근 식후 스파이크와 공복 패턴을 함께 기록해야 해석이 쉬워집니다.';
+    actionTitle = '식후 1시간과 2시간 기록을 번갈아 남기기';
+    actionCopy = 'HbA1c가 높게 나오면 어떤 식사에서 혈당이 오래 유지되는지 확인하는 것이 먼저입니다.';
+    focusTitle = '장기 혈당 흐름 확인이 핵심입니다';
+    focusCopy = '공복혈당만 보지 말고 식후 기록을 함께 쌓아 HbA1c 상승 원인을 찾는 것이 좋습니다.';
   }
 
   return { badge, badgeClass, overallTitle, overallCopy, analysisCopy, actionTitle, actionCopy, focusTitle, focusCopy };
@@ -1003,15 +1167,9 @@ function buildAiPayload() {
   const post2 = getGraphSource('post2', 30);
   const latestFasting = getLatestGlucoseByType('fasting');
   const latestLab = getLatestLab();
-  const labs = getSortedLabs().slice(0, 5).map((item) => ({
-    date: item.date,
-    fasting: item.fasting,
-    insulin: item.insulin,
-    a1c: item.a1c,
-    homaIr: Number(calculateHoma(item.fasting, item.insulin).toFixed(2)),
-    note: item.note || ''
-  }));
+  const labs = getSortedLabs().slice(0, 5).map(pickLab);
   const recentPostMax = getRecentPostMax(30);
+  const latestHoma = latestLab ? calculateHoma(latestLab.fasting, latestLab.insulin) : null;
 
   return {
     generatedAt: new Date().toISOString(),
@@ -1024,19 +1182,13 @@ function buildAiPayload() {
       recentPostMax: recentPostMax ? pickGlucose(recentPostMax) : null
     },
     labSummary: {
-      latest: latestLab ? {
-        date: latestLab.date,
-        fasting: latestLab.fasting,
-        insulin: latestLab.insulin,
-        a1c: latestLab.a1c,
-        homaIr: Number(calculateHoma(latestLab.fasting, latestLab.insulin).toFixed(2)),
-        homaStatus: classifyHoma(calculateHoma(latestLab.fasting, latestLab.insulin)).label
-      } : null,
+      latest: latestLab ? pickLab(latestLab) : null,
       recentLabs: labs
     },
     recentRecords: getSortedGlucose().slice(0, 20).map(pickGlucose),
     appInterpretation: {
-      carePlan: buildCarePlan(latestFasting?.value, recentPostMax?.value, latestLab?.a1c, latestLab ? calculateHoma(latestLab.fasting, latestLab.insulin) : null),
+      riskFlags: buildRiskFlags(),
+      carePlan: buildCarePlan(latestFasting?.value, recentPostMax?.value, latestLab?.a1c, latestHoma),
       pattern: buildPatternInsight(),
       checklist: buildChecklist()
     },
@@ -1053,6 +1205,25 @@ function pickGlucose(item) {
     food: item.food || '',
     note: item.note || '',
     status: classifyByType(item.type, item.value).label
+  };
+}
+
+function pickLab(item) {
+  const homa = calculateHoma(item.fasting, item.insulin);
+  return {
+    date: item.date,
+    fasting: hasValue(item.fasting) ? item.fasting : null,
+    insulin: hasValue(item.insulin) ? item.insulin : null,
+    a1c: hasValue(item.a1c) ? item.a1c : null,
+    cPeptide: hasValue(item.cPeptide) ? item.cPeptide : null,
+    tg: hasValue(item.tg) ? item.tg : null,
+    hdl: hasValue(item.hdl) ? item.hdl : null,
+    ldl: hasValue(item.ldl) ? item.ldl : null,
+    alt: hasValue(item.alt) ? item.alt : null,
+    uricAcid: hasValue(item.uricAcid) ? item.uricAcid : null,
+    homaIr: homa != null ? Number(homa.toFixed(2)) : null,
+    homaStatus: homa != null ? classifyHoma(homa).label : '계산 대기',
+    note: item.note || ''
   };
 }
 
@@ -1074,7 +1245,7 @@ function buildLocalAiCoach(payload) {
   lines.push(`- 공복: ${glucose.latestFasting ? `${glucose.latestFasting.value}mg/dL · ${glucose.latestFasting.status}` : '최근 기록 없음'}`);
   lines.push(`- 최근 공복 평균: ${glucose.fasting14Average != null ? `${glucose.fasting14Average}mg/dL · 추세 ${glucose.fasting14Trend}` : '계산할 기록 부족'}`);
   lines.push(`- 식후 최고: ${glucose.recentPostMax ? `${glucose.recentPostMax.value}mg/dL · ${glucose.recentPostMax.type}` : '최근 식후 기록 없음'}`);
-  lines.push(`- HbA1c/HOMA-IR: ${lab ? `HbA1c ${lab.a1c}%, HOMA-IR ${lab.homaIr} · ${lab.homaStatus}` : '검사 기록 없음'}`);
+  lines.push(`- HbA1c/HOMA-IR: ${lab ? `HbA1c ${lab.a1c ?? '—'}%, HOMA-IR ${lab.homaIr ?? '—'} · ${lab.homaStatus}` : '검사 기록 없음'}`);
   lines.push('');
   lines.push('4) 오늘 할 행동 3가지');
   checklist.slice(0, 3).forEach((item, index) => lines.push(`${index + 1}. ${item}`));
@@ -1110,7 +1281,6 @@ async function sendChatQuestion(message) {
   state.chatMessages = state.chatMessages.slice(-30);
   saveState();
   if (els.chatInput) els.chatInput.value = '';
-  renderChat();
   setChatLoading(true);
 
   const payload = buildChatPayload(message);
@@ -1157,13 +1327,15 @@ function clearChatMessages() {
 }
 
 function setChatLoading(isLoading) {
+  isChatLoading = isLoading;
   if (!els.chatSendBtn) return;
   els.chatSendBtn.disabled = isLoading;
   els.chatSendBtn.textContent = isLoading ? '답변 중...' : '질문하기';
   if (els.quickQuestionButtons) {
     els.quickQuestionButtons.forEach((button) => { button.disabled = isLoading; });
   }
-  if (isLoading) setChatStatus('Gemma4 답변 중', 'status-caution');
+  if (isLoading) setChatStatus('답변을 정리하는 중', 'status-caution');
+  renderChat();
 }
 
 function setChatStatus(text, className) {
@@ -1176,22 +1348,94 @@ function renderChat() {
   if (!els.chatMessages) return;
   const messages = state.chatMessages || [];
   const intro = `
-    <div class="chat-bubble bot">
+    <div class="chat-bubble bot intro-bubble">
       <div class="chat-role">AI 코치</div>
-      <p>안녕하세요. 당뇨 관련 수치와 생활관리 질문을 물어보세요. 진단이나 처방이 아니라 기록 기반 생활관리 조언으로 답변합니다.</p>
+      <p>안녕하세요. 질문을 남기면 핵심 답변, 저장 수치 해석, 오늘 할 행동 순서로 차례대로 정리해드릴게요.</p>
     </div>`;
   const html = messages.map((message) => {
     const isUser = message.role === 'user';
     const role = isUser ? '주인님' : 'AI 코치';
     const bubbleClass = isUser ? 'user' : 'bot';
+    const content = isUser
+      ? `<p>${escapeHtml(message.text).replace(/\n/g, '<br>')}</p>`
+      : renderChatAnswerSteps(message.text);
     return `
       <div class="chat-bubble ${bubbleClass}">
         <div class="chat-role">${role}</div>
-        <p>${escapeHtml(message.text).replace(/\n/g, '<br>')}</p>
+        ${content}
       </div>`;
   }).join('');
-  els.chatMessages.innerHTML = intro + html;
+  const loading = isChatLoading ? `
+    <div class="chat-bubble bot typing-bubble">
+      <div class="chat-role">AI 코치</div>
+      <div class="typing-row"><span></span><span></span><span></span></div>
+      <p>질문을 읽고 핵심 답변 → 수치 해석 → 오늘 행동 순서로 정리하고 있습니다.</p>
+    </div>` : '';
+  els.chatMessages.innerHTML = intro + html + loading;
   els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+}
+
+function renderChatAnswerSteps(text) {
+  const steps = splitAnswerIntoSteps(text);
+  return `<div class="chat-answer-steps">${steps.map((step, index) => `
+    <section class="chat-step" style="--step-index:${index}">
+      <div class="chat-step-head"><span>${index + 1}</span><strong>${escapeHtml(step.title)}</strong></div>
+      <div class="chat-step-body">${renderChatStepBody(step.lines)}</div>
+    </section>
+  `).join('')}</div>`;
+}
+
+function splitAnswerIntoSteps(text) {
+  const rawLines = String(text || '').split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const steps = [];
+  let current = null;
+  const headingPattern = /^(?:\d+\s*[).]\s*)?(핵심 답변|핵심|한 줄 요약|수치와 연결한 해석|수치별 해석|저장 수치 해석|가장 중요한 포인트|주의 포인트|오늘 할 행동|오늘의 행동|다음 기록 추천|다음 기록|요약)\s*:?\s*(.*)$/i;
+
+  rawLines.forEach((line) => {
+    const normalized = line.replace(/^#+\s*/, '').trim();
+    const match = normalized.match(headingPattern);
+    if (match) {
+      current = { title: normalizeChatStepTitle(match[1]), lines: [] };
+      if (match[2]) current.lines.push(match[2]);
+      steps.push(current);
+      return;
+    }
+    if (!current) {
+      current = { title: steps.length ? '추가 설명' : '핵심 답변', lines: [] };
+      steps.push(current);
+    }
+    current.lines.push(normalized);
+  });
+
+  if (!steps.length) return [{ title: '핵심 답변', lines: ['답변을 불러오지 못했습니다. 다시 질문해 주세요.'] }];
+  if (steps.length === 1 && steps[0].lines.length > 4) {
+    const lines = steps[0].lines;
+    return [
+      { title: steps[0].title, lines: lines.slice(0, 2) },
+      { title: '수치 해석', lines: lines.slice(2, 5) },
+      { title: '오늘 할 행동', lines: lines.slice(5) }
+    ].filter((step) => step.lines.length);
+  }
+  return steps.slice(0, 6);
+}
+
+function normalizeChatStepTitle(title) {
+  const t = String(title || '').replace(/\s+/g, '');
+  if (t.includes('수치')) return '수치와 연결한 해석';
+  if (t.includes('행동')) return '오늘 할 행동';
+  if (t.includes('기록')) return '다음 기록 추천';
+  if (t.includes('포인트') || t.includes('주의')) return '주의 포인트';
+  if (t.includes('요약')) return '한 줄 요약';
+  return '핵심 답변';
+}
+
+function renderChatStepBody(lines) {
+  const items = lines.length ? lines : ['내용이 없습니다.'];
+  const bulletLines = items.filter((line) => /^[-•]\s+|^\d+\.\s+/.test(line));
+  if (bulletLines.length >= Math.max(2, items.length - 1)) {
+    return `<ul>${items.map((line) => `<li>${escapeHtml(line.replace(/^[-•]\s+|^\d+\.\s+/, ''))}</li>`).join('')}</ul>`;
+  }
+  return items.map((line) => `<p>${escapeHtml(line.replace(/^[-•]\s+/, ''))}</p>`).join('');
 }
 
 function buildChatPayload(question) {
@@ -1206,6 +1450,7 @@ function buildChatPayload(question) {
     })),
     responseRules: [
       '한국어로 친절하고 짧게 답변',
+      '반드시 1) 핵심 답변 2) 수치와 연결한 해석 3) 오늘 할 행동 4) 다음 기록 추천 순서로 작성',
       '진단, 처방, 약물 변경 지시는 금지',
       '앱에 저장된 혈당/검사 수치가 있으면 연결해서 설명',
       '위험 신호가 있으면 의료진 상담 안내',
@@ -1259,12 +1504,12 @@ function getGemmaChatSystemPrompt() {
     '진단, 처방, 약물 용량 조절, 약 중단 지시는 하지 마세요.',
     '응급 또는 위험 신호가 있으면 의료진 상담을 먼저 권하세요.',
     '앱 데이터가 있으면 공복혈당, 식후혈당, HbA1c, HOMA-IR와 연결해서 설명하세요.',
-    '답변은 1) 핵심 답변 2) 수치와 연결한 해석 3) 오늘 할 행동 으로 짧게 구성하세요.'
+    '답변은 반드시 1) 핵심 답변 2) 수치와 연결한 해석 3) 오늘 할 행동 4) 다음 기록 추천 순서로 나눠 쓰세요.'
   ].join(' ');
 }
 
 function makeChatPrompt(payload) {
-  return `아래는 당뇨관리 앱 사용자의 질문과 저장 데이터입니다. 상담 챗봇처럼 답변해 주세요.\n\n질문:\n${payload.question}\n\n데이터(JSON):\n${JSON.stringify(payload, null, 2)}`;
+  return `아래는 당뇨관리 앱 사용자의 질문과 저장 데이터입니다. 상담 챗봇처럼 답변하되, 화면에서 단계별 카드로 보여주기 좋게 번호가 붙은 짧은 섹션으로 답변해 주세요.\n\n질문:\n${payload.question}\n\n데이터(JSON):\n${JSON.stringify(payload, null, 2)}`;
 }
 
 function buildLocalChatAnswer(payload) {
@@ -1275,7 +1520,7 @@ function buildLocalChatAnswer(payload) {
   const checklist = payload.appData.appInterpretation.checklist || [];
   const lines = [];
 
-  lines.push('핵심 답변');
+  lines.push('1) 핵심 답변');
   if (q.includes('공복')) {
     lines.push('공복혈당은 전날 저녁 식사, 야식, 수면, 스트레스, 새벽 호르몬 영향에 따라 올라갈 수 있습니다.');
   } else if (q.includes('식후') || q.includes('스파이크')) {
@@ -1289,13 +1534,17 @@ function buildLocalChatAnswer(payload) {
   }
 
   lines.push('');
-  lines.push('수치와 연결한 해석');
+  lines.push('2) 수치와 연결한 해석');
   lines.push(`- 최근 공복: ${latestFasting ? `${latestFasting.value}mg/dL · ${latestFasting.status}` : '기록 없음'}`);
   lines.push(`- 최근 식후 최고: ${postMax ? `${postMax.value}mg/dL · ${postMax.type}` : '기록 없음'}`);
-  lines.push(`- HbA1c/HOMA-IR: ${lab ? `HbA1c ${lab.a1c}%, HOMA-IR ${lab.homaIr} · ${lab.homaStatus}` : '검사 기록 없음'}`);
+  lines.push(`- HbA1c/HOMA-IR: ${lab ? `HbA1c ${lab.a1c ?? '—'}%, HOMA-IR ${lab.homaIr ?? '—'} · ${lab.homaStatus}` : '검사 기록 없음'}`);
   lines.push('');
-  lines.push('오늘 할 행동');
+  lines.push('3) 오늘 할 행동');
   checklist.slice(0, 3).forEach((item, index) => lines.push(`${index + 1}. ${item}`));
+  lines.push('');
+  lines.push('');
+  lines.push('4) 다음 기록 추천');
+  lines.push('같은 시간대 공복혈당과 식후 1시간/2시간 기록을 번갈아 남기면 패턴이 더 선명해집니다.');
   lines.push('');
   lines.push('※ Gemma4 연결이 실패해 앱 내부 기본 상담으로 표시했습니다. 반복 고혈당이나 증상이 있으면 의료진 상담이 우선입니다.');
   return lines.join('\n');
@@ -1415,6 +1664,7 @@ function emptySvg(message) {
 }
 
 function calculateHoma(fasting, insulin) {
+  if (!hasValue(fasting) || !hasValue(insulin) || Number(fasting) <= 0 || Number(insulin) <= 0) return null;
   return (Number(fasting) * Number(insulin)) / 405;
 }
 

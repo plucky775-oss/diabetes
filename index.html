@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#edf4ff" />
   <title>당뇨 AI 코치</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=9" />
 </head>
 <body>
   <div class="app-shell">
@@ -14,9 +14,9 @@
       <section id="view-home" class="view active">
         <header class="hero-header">
           <div>
-            <p class="eyebrow">GEMMA 4 AI COACH · V8</p>
+            <p class="eyebrow">GEMMA 4 AI COACH · V9 · 85점 개선형</p>
             <h1>당뇨 AI 코치</h1>
-            <p class="hero-sub" id="heroDateText">혈당·HbA1c·HOMA-IR를 기록하고 Gemma4가 생활관리 포인트를 정리합니다.</p>
+            <p class="hero-sub" id="heroDateText">혈당·검사·인슐린저항성 흐름을 기록하고 Gemma4가 오늘의 우선순위를 차례로 정리합니다.</p>
           </div>
           <div class="hero-actions">
             <button id="goToRecordBtn" class="pill-button" type="button">빠른 입력</button>
@@ -34,7 +34,7 @@
             <span id="summaryBadge" class="status-badge status-caution">확인 중</span>
           </div>
 
-          <p class="summary-copy" id="summaryCopy">공복혈당, 식후혈당, 검사 결과를 바탕으로 요약을 보여드립니다.</p>
+          <p class="summary-copy" id="summaryCopy">공복혈당, 식후혈당, 검사 결과를 바탕으로 위험 신호와 오늘 할 일을 먼저 보여드립니다.</p>
 
           <div class="metric-grid metric-grid-home">
             <article class="metric-card emphasis-card">
@@ -58,6 +58,8 @@
               <span class="metric-unit" id="homeHomaStatus">인슐린저항성 지표</span>
             </article>
           </div>
+
+          <div id="homeRiskPanel" class="risk-panel" aria-live="polite"></div>
 
           <div class="coach-grid">
             <article class="coach-card coach-primary">
@@ -222,14 +224,14 @@
       <section id="view-lab" class="view">
         <div class="page-header">
           <h2>검사</h2>
-          <p>검사 수치 저장과 HOMA-IR 자동 계산을 한 화면에서 관리합니다.</p>
+          <p>일부 검사 항목만 입력해도 저장하고, 입력된 수치만 골라 해석합니다.</p>
         </div>
 
         <section class="card">
           <div class="section-head">
             <div>
               <h3 id="labFormTitle">검사 입력</h3>
-              <p class="section-subtext">입력 즉시 HOMA-IR 예상값을 보여드립니다.</p>
+              <p class="section-subtext">공복혈당·인슐린을 함께 넣으면 HOMA-IR를 자동 계산하고, 일부 항목만 넣어도 저장됩니다.</p>
             </div>
             <button id="labCancelBtn" class="text-link hidden" type="button">수정 취소</button>
           </div>
@@ -242,15 +244,39 @@
             </label>
             <label>
               공복혈당
-              <input type="number" name="fasting" min="40" max="400" placeholder="예: 95" required />
+              <input type="number" name="fasting" min="40" max="400" placeholder="예: 95" />
             </label>
             <label>
               공복 인슐린
-              <input type="number" name="insulin" min="0" max="100" step="0.01" placeholder="예: 11.8" required />
+              <input type="number" name="insulin" min="0" max="100" step="0.01" placeholder="예: 11.8" />
             </label>
             <label>
               HbA1c
-              <input type="number" name="a1c" min="3" max="15" step="0.1" placeholder="예: 5.3" required />
+              <input type="number" name="a1c" min="3" max="15" step="0.1" placeholder="예: 5.3" />
+            </label>
+            <label>
+              C-peptide
+              <input type="number" name="cPeptide" min="0" max="20" step="0.01" placeholder="예: 2.12" />
+            </label>
+            <label>
+              중성지방
+              <input type="number" name="tg" min="0" max="1000" step="1" placeholder="예: 110" />
+            </label>
+            <label>
+              HDL
+              <input type="number" name="hdl" min="0" max="200" step="1" placeholder="예: 55" />
+            </label>
+            <label>
+              LDL
+              <input type="number" name="ldl" min="0" max="400" step="1" placeholder="예: 100" />
+            </label>
+            <label>
+              ALT
+              <input type="number" name="alt" min="0" max="500" step="1" placeholder="예: 25" />
+            </label>
+            <label>
+              요산
+              <input type="number" name="uricAcid" min="0" max="20" step="0.1" placeholder="예: 5.0" />
             </label>
             <label class="full">
               메모
@@ -293,6 +319,19 @@
           </div>
           <p class="summary-copy lab-summary" id="labInsight">검사를 입력하면 자동으로 분석해드려요.</p>
           <p class="subtle-copy" id="labCompare">이전 검사와의 비교도 함께 표시됩니다.</p>
+        </section>
+
+        <section class="card compact-card criteria-card">
+          <div class="section-head">
+            <h3>수치 기준표</h3>
+            <span class="inline-pill">참고용</span>
+          </div>
+          <div class="criteria-grid">
+            <article><strong>공복혈당</strong><span>100 미만 안정 · 100~125 주의 · 126 이상 진료상담 권장</span></article>
+            <article><strong>HbA1c</strong><span>5.7 미만 안정 · 5.7~6.4 주의 · 6.5 이상 진료상담 권장</span></article>
+            <article><strong>식후 2시간</strong><span>140 미만 안정 · 140~199 주의 · 200 이상 진료상담 권장</span></article>
+            <article><strong>HOMA-IR</strong><span>2.0 미만 안정 · 2.0~2.9 경계/주의 · 3.0 이상 점검 필요</span></article>
+          </div>
         </section>
 
         <section class="card compact-card">
@@ -380,7 +419,7 @@
       <section id="view-chat" class="view">
         <div class="page-header">
           <h2>상담 챗봇</h2>
-          <p>당뇨 전단계, 공복혈당, 식후혈당, HbA1c, HOMA-IR 관련 질문을 편하게 물어보세요.</p>
+          <p>상담 답변을 핵심→수치해석→오늘 행동 순서로 나눠서 보여드립니다.</p>
         </div>
 
         <section class="card chat-card">
@@ -388,7 +427,7 @@
             <div>
               <p class="section-kicker">GEMMA 4 DIABETES CHAT</p>
               <h3>당뇨 관리 상담</h3>
-              <p class="section-subtext">저장된 혈당·검사 수치를 함께 참고해서 생활관리 중심으로 답변합니다.</p>
+              <p class="section-subtext">답변이 한꺼번에 쏟아지지 않도록 단계 카드로 차례대로 표시합니다.</p>
             </div>
             <span id="chatStatus" class="status-badge status-stable">상담 대기</span>
           </div>
@@ -403,7 +442,7 @@
           <div id="chatMessages" class="chat-messages" aria-live="polite">
             <div class="chat-bubble bot">
               <div class="chat-role">AI 코치</div>
-              <p>안녕하세요. 당뇨 관련 수치와 생활관리 질문을 물어보세요. 진단이나 처방이 아니라 기록 기반 생활관리 조언으로 답변합니다.</p>
+              <p>안녕하세요. 질문을 남기면 핵심 답변, 저장 수치 해석, 오늘 할 행동 순서로 차례대로 정리해드릴게요.</p>
             </div>
           </div>
 
@@ -452,6 +491,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
