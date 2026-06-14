@@ -335,8 +335,9 @@ function setDefaultFormValues() {
 }
 
 function openView(viewName) {
+  const navName = ['graph', 'lab'].includes(viewName) ? 'analysis' : viewName;
   els.views.forEach((view) => view.classList.toggle('active', view.id === `view-${viewName}`));
-  els.navButtons.forEach((button) => button.classList.toggle('active', button.dataset.nav === viewName));
+  els.navButtons.forEach((button) => button.classList.toggle('active', button.dataset.nav === navName));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
